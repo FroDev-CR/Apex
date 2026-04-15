@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
-import { qboApi } from '../api';
+import { qboApi, invoicesApi } from '../api';
 
 const NAV_ITEMS = [
   {
@@ -60,6 +60,8 @@ function Layout({ children }) {
     toast.loading('Conectando con QuickBooks...', { id: 'sync' });
     try {
       const result = await qboApi.sync();
+      // Recalcular campos de salario después de cada sync
+      await invoicesApi.recalculate();
       const msg = result.total === 0
         ? 'Sin cambios — todo está al día'
         : `${result.total} facturas sincronizadas (${result.inserted} nuevas, ${result.updated} actualizadas)`;

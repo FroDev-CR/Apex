@@ -23,7 +23,6 @@ reportRoutes.get('/salary', async (req, res) => {
 
     const invoiceFilter = {
       hasMonoSlab: true,
-      collaborator: { $ne: null },
       ...dateFilter(dateFrom, dateTo)
     };
     if (collaboratorId) invoiceFilter.collaborator = collaboratorId;
@@ -32,13 +31,15 @@ reportRoutes.get('/salary', async (req, res) => {
       .populate('collaborator', 'name color email')
       .sort({ txnDate: -1 });
 
-    // Group by collaborator
+    // Group by collaborator (null = sin asignar)
     const byCollab = new Map();
     for (const inv of invoices) {
-      if (!inv.collaborator) continue;
-      const key = inv.collaborator._id.toString();
+      const key = inv.collaborator ? inv.collaborator._id.toString() : '__unassigned__';
       if (!byCollab.has(key)) {
-        byCollab.set(key, { collaborator: inv.collaborator, invoices: [] });
+        byCollab.set(key, {
+          collaborator: inv.collaborator || null,
+          invoices: []
+        });
       }
       byCollab.get(key).invoices.push(inv);
     }
@@ -55,8 +56,12 @@ reportRoutes.get('/salary', async (req, res) => {
       });
     }
 
-    // Sort by totalPay desc
-    results.sort((a, b) => b.totalPay - a.totalPay);
+    // Asignados primero por totalPay, sin asignar al final
+    results.sort((a, b) => {
+      if (!a.collaborator && b.collaborator) return 1;
+      if (a.collaborator && !b.collaborator) return -1;
+      return b.totalPay - a.totalPay;
+    });
 
     const grandTotal = results.reduce((s, r) => s + r.totalPay, 0);
     res.json({ results, grandTotal, period: { dateFrom, dateTo } });

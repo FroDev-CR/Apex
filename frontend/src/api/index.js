@@ -34,7 +34,8 @@ export const invoicesApi = {
     fetchApi(`/api/invoices/${id}/collaborator`, {
       method: 'PATCH',
       body: JSON.stringify({ collaboratorId })
-    })
+    }),
+  recalculate: () => fetchApi('/api/invoices/recalculate', { method: 'POST' })
 };
 
 // ─── Reports ────────────────────────────────────────────────────────────────

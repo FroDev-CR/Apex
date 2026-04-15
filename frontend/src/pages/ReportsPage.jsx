@@ -127,12 +127,14 @@ function SalaryTab({ params }) {
               >
                 <div
                   className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
-                  style={{ backgroundColor: r.collaborator?.color || '#6b7280' }}
+                  style={{ backgroundColor: r.collaborator?.color || '#9ca3af' }}
                 >
-                  {r.collaborator?.name?.charAt(0).toUpperCase()}
+                  {r.collaborator ? r.collaborator.name.charAt(0).toUpperCase() : '?'}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-steel-900">{r.collaborator?.name}</div>
+                  <div className="font-semibold text-steel-900">
+                    {r.collaborator?.name || <span className="text-steel-400 italic">Sin asignar</span>}
+                  </div>
                   <div className="text-xs text-steel-500">{fmtNum(r.totalM2)} m² · {r.invoiceCount} facturas</div>
                 </div>
                 <div className="text-right flex-shrink-0">

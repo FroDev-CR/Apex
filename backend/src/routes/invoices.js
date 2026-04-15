@@ -204,6 +204,36 @@ function normalizeInvoice(inv) {
   };
 }
 
+// ─── POST /api/invoices/recalculate ───────────────────────────────────────
+// Recalcula hasMonoSlab, monoSlabQty y collaboratorPay para todas las facturas
+// usando los lineItems ya guardados en MongoDB. Útil para arreglar facturas antiguas.
+invoiceRoutes.post('/recalculate', async (req, res) => {
+  try {
+    const { computeInvoicePayFields } = await import('../salary/salaryRules.js');
+    const invoices = await Invoice.find({});
+    let fixed = 0;
+
+    for (const inv of invoices) {
+      const payFields = computeInvoicePayFields(inv.lineItems || []);
+      const changed =
+        inv.hasMonoSlab !== payFields.hasMonoSlab ||
+        inv.monoSlabQty !== payFields.monoSlabQty ||
+        inv.collaboratorPay !== payFields.collaboratorPay;
+
+      if (changed) {
+        await Invoice.updateOne({ _id: inv._id }, { $set: payFields });
+        fixed++;
+      }
+    }
+
+    console.log(`✅ Recalculate: ${fixed} facturas corregidas de ${invoices.length} total`);
+    res.json({ success: true, total: invoices.length, fixed });
+  } catch (err) {
+    console.error('❌ Recalculate error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── PATCH /api/invoices/:id/collaborator ──────────────────────────────────
 // Manually assign/override a collaborator on an invoice
 invoiceRoutes.patch('/:id/collaborator', async (req, res) => {
