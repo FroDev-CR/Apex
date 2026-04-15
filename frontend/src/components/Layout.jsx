@@ -1,72 +1,29 @@
 import { NavLink } from 'react-router-dom';
-import { useState } from 'react';
-import toast from 'react-hot-toast';
-import { qboApi, invoicesApi } from '../api';
-
-const NAV_ITEMS = [
-  {
-    to: '/reports',
-    label: 'Reportes',
-    shortLabel: 'Rep',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-          d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-      </svg>
-    ),
-  },
-  {
-    to: '/invoices',
-    label: 'Facturas',
-    shortLabel: 'Fact',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-      </svg>
-    ),
-  },
-  {
-    to: '/settings',
-    label: 'Config',
-    shortLabel: 'CFG',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-          d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-      </svg>
-    ),
-  },
-];
+import { useLanguage } from '../context/LanguageContext';
 
 function Layout({ children }) {
-  const [syncing, setSyncing] = useState(false);
+  const { t, lang, toggle } = useLanguage();
 
-  const handleSync = async () => {
-    if (syncing) return;
-    setSyncing(true);
-    toast.loading('Conectando con QuickBooks...', { id: 'sync' });
-    try {
-      const result = await qboApi.sync();
-      // Recalcular campos de salario después de cada sync
-      await invoicesApi.recalculate();
-      const msg = result.total === 0
-        ? 'Sin cambios — todo está al día'
-        : `${result.total} facturas sincronizadas (${result.inserted} nuevas, ${result.updated} actualizadas)`;
-      toast.success(msg, { id: 'sync', duration: 6000 });
-      window.dispatchEvent(new CustomEvent('invoices-synced'));
-    } catch (error) {
-      toast.error(
-        error.message.includes('not connected')
-          ? 'QuickBooks no conectado — ve a Configuración'
-          : `Error: ${error.message}`,
-        { id: 'sync', duration: 6000 }
-      );
-    } finally {
-      setSyncing(false);
-    }
-  };
+  const NAV_ITEMS = [
+    {
+      to: '/reports', label: t('nav_reports'), shortLabel: t('nav_reports'),
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+      ),
+    },
+    {
+      to: '/invoices', label: t('nav_invoices'), shortLabel: t('nav_invoices'),
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+        </svg>
+      ),
+    },
+  ];
 
   return (
     <div className="min-h-screen flex flex-col bg-concrete-50">
@@ -106,34 +63,40 @@ function Layout({ children }) {
               ))}
             </nav>
 
-            {/* Sync button */}
-            <button
-              onClick={handleSync}
-              disabled={syncing}
-              className={`flex items-center gap-1.5 px-3 md:px-5 py-2 rounded font-bold text-xs md:text-sm uppercase tracking-wider transition-all ${
-                syncing
-                  ? 'bg-steel-700 text-steel-400 cursor-not-allowed'
-                  : 'bg-primary-500 hover:bg-primary-600 text-white shadow-md hover:shadow-lg active:scale-95'
-              }`}
-            >
-              {syncing ? (
-                <>
-                  <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                  </svg>
-                  <span className="hidden sm:inline">Sincronizando...</span>
-                </>
-              ) : (
-                <>
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5}
-                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  <span>Sync QBO</span>
-                </>
-              )}
-            </button>
+            {/* Right actions */}
+            <div className="flex items-center gap-1.5">
+
+              {/* Language toggle */}
+              <button
+                onClick={toggle}
+                title={lang === 'es' ? 'Switch to English' : 'Cambiar a Español'}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded text-steel-300 hover:text-white hover:bg-steel-700 transition-colors text-xs font-bold uppercase tracking-wide"
+              >
+                {/* Translate icon */}
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
+                </svg>
+                <span className="hidden sm:inline">{lang === 'es' ? 'EN' : 'ES'}</span>
+              </button>
+
+              {/* Settings gear */}
+              <NavLink
+                to="/settings"
+                title={t('nav_settings')}
+                className={({ isActive }) =>
+                  `p-2 rounded transition-colors ${
+                    isActive ? 'text-primary-400 bg-steel-700' : 'text-steel-300 hover:text-white hover:bg-steel-700'
+                  }`
+                }
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </NavLink>
+            </div>
           </div>
         </div>
       </header>
@@ -157,6 +120,19 @@ function Layout({ children }) {
             <span className="text-[10px] uppercase tracking-wide">{shortLabel}</span>
           </NavLink>
         ))}
+        {/* Settings en mobile nav */}
+        <NavLink to="/settings" className={({ isActive }) =>
+          `flex-1 flex flex-col items-center justify-center py-2 gap-0.5 text-xs font-semibold transition-colors ${
+            isActive ? 'text-primary-400 bg-steel-800' : 'text-steel-400 hover:text-steel-200'
+          }`
+        }>
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          <span className="text-[10px] uppercase tracking-wide">{t('nav_settings')}</span>
+        </NavLink>
       </nav>
     </div>
   );

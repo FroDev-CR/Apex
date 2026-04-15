@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { invoicesApi, collaboratorsApi } from '../api';
+import { useLanguage } from '../context/LanguageContext';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 const fmt = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n ?? 0);
@@ -175,11 +176,13 @@ function InvoiceModal({ invoice, collaborators, onClose, onCollaboratorChange })
 
 // ─── Main page ─────────────────────────────────────────────────────────────
 function InvoicesPage() {
+  const { t } = useLanguage();
   const [invoices, setInvoices] = useState([]);
   const [pagination, setPagination] = useState({ total: 0, pages: 1, page: 1 });
   const [loading, setLoading] = useState(true);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [collaborators, setCollaborators] = useState([]);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const [filters, setFilters] = useState({
     customer: '',
@@ -190,6 +193,8 @@ function InvoicesPage() {
     page: 1,
     limit: 50
   });
+
+  const hasActiveFilters = filters.customer || filters.hasMonoSlab || filters.unpaidOnly || filters.dateFrom || filters.dateTo;
 
   const fetchInvoices = useCallback(async () => {
     setLoading(true);
@@ -210,7 +215,6 @@ function InvoicesPage() {
     collaboratorsApi.list({ active: true }).then(setCollaborators).catch(() => {});
   }, []);
 
-  // Refresh when global sync fires
   useEffect(() => {
     const handler = () => fetchInvoices();
     window.addEventListener('invoices-synced', handler);
@@ -218,65 +222,122 @@ function InvoicesPage() {
   }, [fetchInvoices]);
 
   const setFilter = (key, value) => setFilters(f => ({ ...f, [key]: value, page: 1 }));
+  const clearFilters = () => setFilters({ customer: '', hasMonoSlab: '', unpaidOnly: '', dateFrom: '', dateTo: '', page: 1, limit: 50 });
 
   return (
     <div className="space-y-4">
       {/* ── Header ── */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-steel-900">Facturas</h1>
-          <p className="text-steel-500 text-sm mt-0.5">{pagination.total} facturas en total</p>
+          <h1 className="text-2xl font-bold text-steel-900">{t('nav_invoices')}</h1>
+          <p className="text-steel-500 text-sm mt-0.5">{pagination.total} {t('kpi_invoices').toLowerCase()}</p>
         </div>
-      </div>
 
-      {/* ── Filters ── */}
-      <div className="bg-white border border-concrete-200 rounded-xl shadow-steel px-4 py-3 flex flex-wrap items-center gap-3">
-        <input
-          type="text"
-          placeholder="Buscar cliente..."
-          value={filters.customer}
-          onChange={e => setFilter('customer', e.target.value)}
-          className="flex-1 min-w-[160px] border border-concrete-200 rounded-lg px-3 py-1.5 text-sm text-steel-700 focus:outline-none focus:ring-2 focus:ring-primary-400"
-        />
-
-        <select
-          value={filters.hasMonoSlab}
-          onChange={e => setFilter('hasMonoSlab', e.target.value)}
-          className="border border-concrete-200 rounded-lg px-3 py-1.5 text-sm text-steel-700 focus:outline-none focus:ring-2 focus:ring-primary-400"
+        {/* Filter toggle button */}
+        <button
+          onClick={() => setFiltersOpen(o => !o)}
+          className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-semibold transition-all ${
+            filtersOpen || hasActiveFilters
+              ? 'bg-primary-500 border-primary-500 text-white shadow-md'
+              : 'bg-white border-concrete-200 text-steel-600 hover:border-primary-300 hover:text-primary-600'
+          }`}
         >
-          <option value="">Todos los tipos</option>
-          <option value="true">Solo MONO SLAB</option>
-          <option value="false">Sin MONO SLAB</option>
-        </select>
-
-        <select
-          value={filters.unpaidOnly}
-          onChange={e => setFilter('unpaidOnly', e.target.value)}
-          className="border border-concrete-200 rounded-lg px-3 py-1.5 text-sm text-steel-700 focus:outline-none focus:ring-2 focus:ring-primary-400"
-        >
-          <option value="">Todas</option>
-          <option value="true">Solo pendientes de pago</option>
-        </select>
-
-        <input type="date" value={filters.dateFrom}
-          onChange={e => setFilter('dateFrom', e.target.value)}
-          className="border border-concrete-200 rounded-lg px-3 py-1.5 text-sm text-steel-700 focus:outline-none focus:ring-2 focus:ring-primary-400"
-        />
-        <span className="text-steel-400 text-sm">—</span>
-        <input type="date" value={filters.dateTo}
-          onChange={e => setFilter('dateTo', e.target.value)}
-          className="border border-concrete-200 rounded-lg px-3 py-1.5 text-sm text-steel-700 focus:outline-none focus:ring-2 focus:ring-primary-400"
-        />
-
-        {(filters.customer || filters.hasMonoSlab || filters.unpaidOnly || filters.dateFrom || filters.dateTo) && (
-          <button
-            onClick={() => setFilters({ customer: '', hasMonoSlab: '', unpaidOnly: '', dateFrom: '', dateTo: '', page: 1, limit: 50 })}
-            className="text-xs text-steel-400 hover:text-red-500 transition-colors"
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
+          </svg>
+          {t('filter_btn')}
+          {hasActiveFilters && (
+            <span className="w-2 h-2 rounded-full bg-white/80" />
+          )}
+          <svg
+            className={`w-3.5 h-3.5 transition-transform ${filtersOpen ? 'rotate-180' : ''}`}
+            fill="none" stroke="currentColor" viewBox="0 0 24 24"
           >
-            Limpiar
-          </button>
-        )}
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
       </div>
+
+      {/* ── Collapsible filters ── */}
+      {filtersOpen && (
+        <div className="bg-white border border-concrete-200 rounded-xl shadow-steel px-4 py-4 space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {/* Customer search */}
+            <div className="sm:col-span-2 lg:col-span-1">
+              <label className="block text-xs text-steel-400 uppercase tracking-wide font-semibold mb-1">{t('col_client')}</label>
+              <input
+                type="text"
+                placeholder={t('filter_customer')}
+                value={filters.customer}
+                onChange={e => setFilter('customer', e.target.value)}
+                className="w-full border border-concrete-200 rounded-lg px-3 py-2 text-sm text-steel-700 focus:outline-none focus:ring-2 focus:ring-primary-400"
+              />
+            </div>
+
+            {/* Type filter */}
+            <div>
+              <label className="block text-xs text-steel-400 uppercase tracking-wide font-semibold mb-1">{t('col_type')}</label>
+              <select
+                value={filters.hasMonoSlab}
+                onChange={e => setFilter('hasMonoSlab', e.target.value)}
+                className="w-full border border-concrete-200 rounded-lg px-3 py-2 text-sm text-steel-700 focus:outline-none focus:ring-2 focus:ring-primary-400"
+              >
+                <option value="">{t('filter_type_all')}</option>
+                <option value="true">{t('filter_mono')}</option>
+                <option value="false">{t('filter_no_mono')}</option>
+              </select>
+            </div>
+
+            {/* Payment status */}
+            <div>
+              <label className="block text-xs text-steel-400 uppercase tracking-wide font-semibold mb-1">Estado</label>
+              <select
+                value={filters.unpaidOnly}
+                onChange={e => setFilter('unpaidOnly', e.target.value)}
+                className="w-full border border-concrete-200 rounded-lg px-3 py-2 text-sm text-steel-700 focus:outline-none focus:ring-2 focus:ring-primary-400"
+              >
+                <option value="">{t('filter_all_inv')}</option>
+                <option value="true">{t('filter_unpaid')}</option>
+              </select>
+            </div>
+
+            {/* Date range */}
+            <div>
+              <label className="block text-xs text-steel-400 uppercase tracking-wide font-semibold mb-1">{t('col_date')} desde</label>
+              <input
+                type="date"
+                value={filters.dateFrom}
+                onChange={e => setFilter('dateFrom', e.target.value)}
+                className="w-full border border-concrete-200 rounded-lg px-3 py-2 text-sm text-steel-700 focus:outline-none focus:ring-2 focus:ring-primary-400"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-steel-400 uppercase tracking-wide font-semibold mb-1">{t('col_date')} hasta</label>
+              <input
+                type="date"
+                value={filters.dateTo}
+                onChange={e => setFilter('dateTo', e.target.value)}
+                className="w-full border border-concrete-200 rounded-lg px-3 py-2 text-sm text-steel-700 focus:outline-none focus:ring-2 focus:ring-primary-400"
+              />
+            </div>
+          </div>
+
+          {hasActiveFilters && (
+            <div className="flex justify-end pt-1 border-t border-concrete-100">
+              <button
+                onClick={clearFilters}
+                className="flex items-center gap-1.5 text-sm text-steel-400 hover:text-red-500 transition-colors font-medium"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                {t('filter_clear')}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Table ── */}
       <div className="bg-white rounded-xl border border-concrete-200 shadow-steel overflow-hidden">
@@ -286,7 +347,7 @@ function InvoicesPage() {
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
             </svg>
-            Cargando facturas...
+            {t('loading')}
           </div>
         ) : invoices.length === 0 ? (
           <div className="p-12 text-center text-steel-400">
@@ -296,66 +357,68 @@ function InvoicesPage() {
             <p>No hay facturas. Haz un sync con QuickBooks.</p>
           </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-concrete-50 border-b border-concrete-200">
-              <tr className="text-xs text-steel-400 uppercase tracking-wide">
-                <th className="text-left px-4 py-3 font-semibold">#</th>
-                <th className="text-left px-4 py-3 font-semibold">Cliente</th>
-                <th className="text-left px-4 py-3 font-semibold hidden md:table-cell">Fecha</th>
-                <th className="text-left px-4 py-3 font-semibold hidden lg:table-cell">Colaborador</th>
-                <th className="text-left px-4 py-3 font-semibold hidden md:table-cell">Tipo</th>
-                <th className="text-right px-4 py-3 font-semibold">Total</th>
-                <th className="text-right px-4 py-3 font-semibold hidden sm:table-cell">Saldo</th>
-                <th className="text-right px-4 py-3 font-semibold hidden lg:table-cell">Pago collab</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-concrete-100">
-              {invoices.map(inv => (
-                <tr
-                  key={inv._id}
-                  onClick={() => setSelectedInvoice(inv)}
-                  className="hover:bg-concrete-50 cursor-pointer transition-colors"
-                >
-                  <td className="px-4 py-3 font-mono text-steel-700 font-medium">#{inv.docNumber}</td>
-                  <td className="px-4 py-3">
-                    <div className="font-medium text-steel-900 truncate max-w-[180px]">{inv.customerName}</div>
-                    {inv.estado && <EstadoBadge estado={inv.estado} />}
-                  </td>
-                  <td className="px-4 py-3 text-steel-500 hidden md:table-cell">{fmtDate(inv.txnDate)}</td>
-                  <td className="px-4 py-3 hidden lg:table-cell">
-                    {inv.collaborator ? (
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-5 h-5 rounded-full flex-shrink-0"
-                          style={{ backgroundColor: inv.collaborator.color }} />
-                        <span className="text-steel-700 text-xs">{inv.collaborator.name}</span>
-                      </div>
-                    ) : (
-                      <span className="text-steel-300 text-xs">—</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 hidden md:table-cell">
-                    {inv.hasMonoSlab
-                      ? <MonoSlabTag qty={inv.monoSlabQty} />
-                      : <span className="text-xs text-steel-300">Otro</span>
-                    }
-                  </td>
-                  <td className="px-4 py-3 text-right font-semibold text-steel-900">{fmt(inv.totalAmount)}</td>
-                  <td className="px-4 py-3 text-right hidden sm:table-cell">
-                    {inv.balance > 0
-                      ? <span className="text-amber-700 font-semibold">{fmt(inv.balance)}</span>
-                      : <span className="text-green-600 text-xs font-semibold">Pagado</span>
-                    }
-                  </td>
-                  <td className="px-4 py-3 text-right hidden lg:table-cell">
-                    {inv.collaboratorPay > 0
-                      ? <span className="text-primary-700 font-semibold">{fmt(inv.collaboratorPay)}</span>
-                      : <span className="text-steel-300">—</span>
-                    }
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[600px]">
+              <thead className="bg-concrete-50 border-b border-concrete-200">
+                <tr className="text-xs text-steel-400 uppercase tracking-wide">
+                  <th className="text-left px-4 py-3 font-semibold">#</th>
+                  <th className="text-left px-4 py-3 font-semibold">{t('col_client')}</th>
+                  <th className="text-left px-4 py-3 font-semibold hidden md:table-cell">{t('col_date')}</th>
+                  <th className="text-left px-4 py-3 font-semibold hidden lg:table-cell">{t('col_collab')}</th>
+                  <th className="text-left px-4 py-3 font-semibold hidden md:table-cell">{t('col_type')}</th>
+                  <th className="text-right px-4 py-3 font-semibold">{t('col_total')}</th>
+                  <th className="text-right px-4 py-3 font-semibold hidden sm:table-cell">{t('col_balance')}</th>
+                  <th className="text-right px-4 py-3 font-semibold hidden lg:table-cell">{t('col_pay')}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-concrete-100">
+                {invoices.map(inv => (
+                  <tr
+                    key={inv._id}
+                    onClick={() => setSelectedInvoice(inv)}
+                    className="hover:bg-concrete-50 cursor-pointer transition-colors"
+                  >
+                    <td className="px-4 py-3 font-mono text-steel-700 font-medium">#{inv.docNumber}</td>
+                    <td className="px-4 py-3">
+                      <div className="font-medium text-steel-900 truncate max-w-[180px]">{inv.customerName}</div>
+                      {inv.estado && <EstadoBadge estado={inv.estado} />}
+                    </td>
+                    <td className="px-4 py-3 text-steel-500 hidden md:table-cell">{fmtDate(inv.txnDate)}</td>
+                    <td className="px-4 py-3 hidden lg:table-cell">
+                      {inv.collaborator ? (
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-5 h-5 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: inv.collaborator.color }} />
+                          <span className="text-steel-700 text-xs">{inv.collaborator.name}</span>
+                        </div>
+                      ) : (
+                        <span className="text-steel-300 text-xs">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 hidden md:table-cell">
+                      {inv.hasMonoSlab
+                        ? <MonoSlabTag qty={inv.monoSlabQty} />
+                        : <span className="text-xs text-steel-300">Otro</span>
+                      }
+                    </td>
+                    <td className="px-4 py-3 text-right font-semibold text-steel-900">{fmt(inv.totalAmount)}</td>
+                    <td className="px-4 py-3 text-right hidden sm:table-cell">
+                      {inv.balance > 0
+                        ? <span className="text-amber-700 font-semibold">{fmt(inv.balance)}</span>
+                        : <span className="text-green-600 text-xs font-semibold">Pagado</span>
+                      }
+                    </td>
+                    <td className="px-4 py-3 text-right hidden lg:table-cell">
+                      {inv.collaboratorPay > 0
+                        ? <span className="text-primary-700 font-semibold">{fmt(inv.collaboratorPay)}</span>
+                        : <span className="text-steel-300">—</span>
+                      }
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
@@ -367,17 +430,17 @@ function InvoicesPage() {
             onClick={() => setFilters(f => ({ ...f, page: f.page - 1 }))}
             className="px-3 py-1.5 rounded-lg border border-concrete-200 text-sm text-steel-600 disabled:opacity-40 hover:bg-concrete-50 transition-colors"
           >
-            ← Anterior
+            {t('prev')}
           </button>
           <span className="text-sm text-steel-500">
-            Página {filters.page} de {pagination.pages}
+            {t('page')} {filters.page} {t('of')} {pagination.pages}
           </span>
           <button
             disabled={filters.page >= pagination.pages}
             onClick={() => setFilters(f => ({ ...f, page: f.page + 1 }))}
             className="px-3 py-1.5 rounded-lg border border-concrete-200 text-sm text-steel-600 disabled:opacity-40 hover:bg-concrete-50 transition-colors"
           >
-            Siguiente →
+            {t('next')}
           </button>
         </div>
       )}
