@@ -9,9 +9,14 @@ const CLIENT_RATE_PER_M2 = 2.00; // lo que cobra la empresa al cliente
 
 /**
  * Check if a line item is a POUR MONO SLAB
+ * Revisa productService Y description porque QBO a veces no manda ItemRef.Name
  */
 export function isMonoSlab(lineItem) {
-  return lineItem.productService?.toUpperCase().includes(MONO_SLAB_KEYWORD) ?? false;
+  const text = [lineItem.productService, lineItem.description]
+    .filter(Boolean)
+    .join(' ')
+    .toUpperCase();
+  return text.includes(MONO_SLAB_KEYWORD);
 }
 
 /**

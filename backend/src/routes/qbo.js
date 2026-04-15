@@ -177,7 +177,7 @@ function mapQBOInvoice(qbo, collabMap) {
     .filter(l => l.DetailType === 'SalesItemLineDetail')
     .map(l => ({
       lineNum: l.LineNum,
-      productService: l.SalesItemLineDetail?.ItemRef?.Name || '',
+      productService: l.SalesItemLineDetail?.ItemRef?.Name || l.Description || '',
       description: l.Description || '',
       qty: l.SalesItemLineDetail?.Qty || 0,
       rate: l.SalesItemLineDetail?.UnitPrice || 0,
