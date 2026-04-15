@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Fondo estilo concreto con cuadrícula sutil */
+  background-color: #e6e3de;
+  background-image:
+    linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+/* Scrollbar estilo acero */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #c8c4bc; }
+::-webkit-scrollbar-thumb { background: #718496; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #526070; }
+
+/* Drag & drop */
+.dragging { opacity: 0.5; cursor: grabbing; }
+.drop-target {
+  background-color: rgba(249, 115, 22, 0.08);
+  border: 2px dashed #f97316;
+}

@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: apex-backend
+    env: node
+    buildCommand: npm install
+    startCommand: node src/index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: QBO_CLIENT_ID
+        sync: false
+      - key: QBO_CLIENT_SECRET
+        sync: false
+      - key: QBO_REDIRECT_URI
+        sync: false
+      - key: QBO_SANDBOX
+        value: "false"
