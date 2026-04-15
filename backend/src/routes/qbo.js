@@ -56,8 +56,9 @@ qboRoutes.get('/callback', async (req, res) => {
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     res.redirect(`${frontendUrl}/settings?qbo=connected`);
   } catch (err) {
-    console.error('❌ QBO callback error:', err.response?.data || err.message);
-    res.status(500).json({ error: 'Failed to exchange authorization code' });
+    const detail = err.response?.data || err.message;
+    console.error('❌ QBO callback error:', detail);
+    res.status(500).json({ error: 'Failed to exchange authorization code', detail });
   }
 });
 
