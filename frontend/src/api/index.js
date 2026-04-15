@@ -1,17 +1,49 @@
 const API_URL = import.meta.env.VITE_API_URL || '';
 
-async function fetchApi(endpoint, options = {}) {
+// ─── Core fetch with auto-retry on network/cold-start errors ───────────────
+// Render free tier spins down after inactivity. First request after sleep
+// returns no headers (browser shows CORS error). We retry up to 3 times
+// with increasing delays so the user never has to manually reload.
+async function fetchApi(endpoint, options = {}, attempt = 1) {
+  const MAX_ATTEMPTS = 3;
   const url = `${API_URL}${endpoint}`;
   const config = {
     ...options,
-    headers: { 'Content-Type': 'application/json', ...options.headers }
+    headers: { 'Content-Type': 'application/json', ...options.headers },
   };
-  const response = await fetch(url, config);
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Request failed' }));
-    throw new Error(error.error || error.message || `HTTP ${response.status}`);
+
+  try {
+    const response = await fetch(url, config);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Request failed' }));
+      throw new Error(error.error || error.message || `HTTP ${response.status}`);
+    }
+    return response.json();
+  } catch (err) {
+    // Network errors (TypeError) = server is waking up. Retry with backoff.
+    const isNetworkError = err instanceof TypeError;
+    if (isNetworkError && attempt < MAX_ATTEMPTS) {
+      const delay = attempt * 4000; // 4s, 8s
+      console.warn(`⚠️ Server cold start — retry ${attempt}/${MAX_ATTEMPTS - 1} in ${delay / 1000}s`);
+      await new Promise(r => setTimeout(r, delay));
+      return fetchApi(endpoint, options, attempt + 1);
+    }
+    throw err;
   }
-  return response.json();
+}
+
+// ─── Keep-alive: ping every 4 min to prevent Render from sleeping ──────────
+// Only runs when the tab is visible and API_URL is set (i.e. production).
+if (API_URL) {
+  const ping = () => {
+    if (document.visibilityState === 'visible') {
+      fetch(`${API_URL}/api/health`).catch(() => {});
+    }
+  };
+  // Initial ping on load (wakes server early, before user interacts)
+  setTimeout(ping, 1000);
+  // Keep-alive every 4 minutes
+  setInterval(ping, 4 * 60 * 1000);
 }
 
 // ─── QuickBooks Online ──────────────────────────────────────────────────────
@@ -19,7 +51,6 @@ export const qboApi = {
   status: () => fetchApi('/api/qbo/status'),
   sync: () => fetchApi('/api/qbo/sync', { method: 'POST' }),
   disconnect: () => fetchApi('/api/qbo/disconnect', { method: 'POST' }),
-  // Connect redirects the browser — open directly
   getConnectUrl: () => `${API_URL}/api/qbo/connect`
 };
 
@@ -75,8 +106,8 @@ export const paymentsApi = {
 
 // ─── App Settings ───────────────────────────────────────────────────────────
 export const settingsApi = {
-  get:    ()       => fetchApi('/api/settings'),
-  patch:  (data)   => fetchApi('/api/settings', { method: 'PATCH', body: JSON.stringify(data) }),
+  get:   ()     => fetchApi('/api/settings'),
+  patch: (data) => fetchApi('/api/settings', { method: 'PATCH', body: JSON.stringify(data) }),
 };
 
 // ─── Collaborators ──────────────────────────────────────────────────────────
