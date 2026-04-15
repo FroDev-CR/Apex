@@ -345,78 +345,179 @@ function MarginTab({ params }) {
 }
 
 // ─── Export helpers ────────────────────────────────────────────────────────
+const $ = v => ({ v: Number(v) || 0, t: 'n', z: '"$"#,##0.00' });
+const m2c = v => ({ v: Number(v) || 0, t: 'n', z: '#,##0' });
+const s  = v => ({ v: String(v ?? ''), t: 's' });
+const pct = v => ({ v: (Number(v) || 0) / 100, t: 'n', z: '0.0%' });
+
 function buildWorkbook(data) {
   const wb = XLSX.utils.book_new();
+  const r  = data.resumen;
+  const periodo = `${data.period.dateFrom || 'Inicio'} — ${data.period.dateTo || 'Hoy'}`;
 
-  // Hoja 1: Resumen
-  const r = data.resumen;
-  const resumenRows = [
-    ['REPORTE APEX CONCRETE', ''],
-    ['Período', `${data.period.dateFrom || 'Inicio'} — ${data.period.dateTo || 'Hoy'}`],
-    [''],
-    ['RESUMEN GENERAL', ''],
-    ['Total Facturado',   r.totalRevenue],
-    ['Por Cobrar',        r.totalReceivable],
-    ['Total Cobrado',     r.totalRevenue - r.totalReceivable],
-    ['Costo Collaboradores', r.totalCollabCost],
-    ['Margen Bruto',     r.grossMargin],
-    ['% Margen',         `${r.marginPct?.toFixed(1)}%`],
-    ['Total M²',         r.totalM2],
-    ['Total Facturas',   r.invoiceCount],
-  ];
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(resumenRows), 'Resumen');
-
-  // Hoja 2: Facturas
-  const invHeaders = ['Fecha','Factura #','Cliente','Empresa','Estado','Total Facturado','Saldo Pendiente','Cobrado','Mono Slab','M²','Pago Collab','Colaborador'];
-  const invRows = data.invoices.map(i => [
-    i.fecha, i.factura, i.cliente, i.empresa, i.estado,
-    i.totalFacturado, i.saldoPendiente, i.pagado,
-    i.esMonoSlab, i.m2, i.pagoCollab, i.colaborador
+  // ── Hoja 1: Resumen ──────────────────────────────────────────────────────
+  const wsR = XLSX.utils.aoa_to_sheet([
+    [s('REPORTE APEX CONCRETE'), s('')],
+    [s('Período'), s(periodo)],
+    [s(''), s('')],
+    [s('RESUMEN GENERAL'), s('')],
+    [s('Total Facturado'),        $(r.totalRevenue)],
+    [s('Total Cobrado'),          $(r.totalRevenue - r.totalReceivable)],
+    [s('Por Cobrar'),             $(r.totalReceivable)],
+    [s('Costo Collaboradores'),   $(r.totalCollabCost)],
+    [s('Margen Bruto'),           $(r.grossMargin)],
+    [s('% Margen'),               pct(r.marginPct)],
+    [s('Total M²'),               m2c(r.totalM2)],
+    [s('Total Facturas'),         m2c(r.invoiceCount)],
   ]);
-  const wsInv = XLSX.utils.aoa_to_sheet([invHeaders, ...invRows]);
-  // Anchos de columna
-  wsInv['!cols'] = [12,10,30,20,15,15,15,15,10,10,12,15].map(w => ({ wch: w }));
-  XLSX.utils.book_append_sheet(wb, wsInv, 'Facturas');
+  wsR['!cols'] = [{ wch: 26 }, { wch: 16 }];
+  XLSX.utils.book_append_sheet(wb, wsR, 'Resumen');
 
-  // Hoja 3: Salarios
-  const salHeaders = ['Colaborador','M²','Total a Pagar','# Facturas'];
-  const salRows = data.salaries.map(s => [s.colaborador, s.m2, s.total, s.facturas]);
-  const wsSal = XLSX.utils.aoa_to_sheet([salHeaders, ...salRows]);
-  wsSal['!cols'] = [20,12,15,12].map(w => ({ wch: w }));
+  // ── Hoja 2: Salarios ─────────────────────────────────────────────────────
+  const wsSal = XLSX.utils.aoa_to_sheet([
+    [s('SALARIOS POR COLABORADOR'), s(''), s(''), s('')],
+    [s('Período'), s(periodo), s(''), s('')],
+    [s(''), s(''), s(''), s('')],
+    [s('Colaborador'), s('M²'), s('Total a Pagar'), s('# Facturas')],
+    ...data.salaries.map(sal => [s(sal.colaborador), m2c(sal.m2), $(sal.total), m2c(sal.facturas)]),
+    [s(''), s(''), s(''), s('')],
+    [s('TOTAL'), m2c(data.salaries.reduce((a,x)=>a+x.m2,0)), $(data.salaries.reduce((a,x)=>a+x.total,0)), m2c(data.salaries.reduce((a,x)=>a+x.facturas,0))],
+  ]);
+  wsSal['!cols'] = [{ wch: 22 }, { wch: 12 }, { wch: 16 }, { wch: 12 }];
   XLSX.utils.book_append_sheet(wb, wsSal, 'Salarios');
+
+  // ── Hoja 3: Facturas ─────────────────────────────────────────────────────
+  const wsInv = XLSX.utils.aoa_to_sheet([
+    [s('Fecha'), s('Factura #'), s('Cliente'), s('Estado'), s('Total Facturado'), s('Saldo Pendiente'), s('Cobrado'), s('Mono Slab'), s('M²'), s('Pago Collab'), s('Colaborador')],
+    ...data.invoices.map(i => [
+      s(i.fecha), s(i.factura), s(i.cliente), s(i.estado),
+      $(i.totalFacturado), $(i.saldoPendiente), $(i.pagado),
+      s(i.esMonoSlab), m2c(i.m2), $(i.pagoCollab), s(i.colaborador)
+    ]),
+  ]);
+  wsInv['!cols'] = [12,10,32,14,16,16,14,10,10,13,16].map(w => ({ wch: w }));
+  XLSX.utils.book_append_sheet(wb, wsInv, 'Facturas');
 
   return wb;
 }
 
-function downloadCSV(data) {
-  const rows = [
-    ['REPORTE APEX CONCRETE'],
-    [`Período: ${data.period.dateFrom || 'Inicio'} — ${data.period.dateTo || 'Hoy'}`],
-    [],
-    ['=== RESUMEN ==='],
-    ['Total Facturado', data.resumen.totalRevenue],
-    ['Por Cobrar', data.resumen.totalReceivable],
-    ['Costo Collabs', data.resumen.totalCollabCost],
-    ['Margen Bruto', data.resumen.grossMargin],
-    ['% Margen', `${data.resumen.marginPct?.toFixed(1)}%`],
-    [],
-    ['=== SALARIOS ==='],
-    ['Colaborador', 'M²', 'Total a Pagar', '# Facturas'],
-    ...data.salaries.map(s => [s.colaborador, s.m2, s.total, s.facturas]),
-    [],
-    ['=== FACTURAS ==='],
-    ['Fecha','Factura #','Cliente','Estado','Total','Saldo','M²','Pago Collab','Colaborador'],
-    ...data.invoices.map(i => [i.fecha, i.factura, i.cliente, i.estado, i.totalFacturado, i.saldoPendiente, i.m2, i.pagoCollab, i.colaborador]),
-  ];
+function openPrintView(data) {
+  const periodo = `${data.period.dateFrom || 'Inicio'} — ${data.period.dateTo || 'Hoy'}`;
+  const fmtUSD  = n => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n ?? 0);
+  const fmtNum  = n => new Intl.NumberFormat('en-US').format(n ?? 0);
+  const r = data.resumen;
 
-  const csv = rows.map(r => r.map(v => `"${v ?? ''}"`).join(',')).join('\n');
-  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `apex-reporte-${new Date().toISOString().slice(0,10)}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
+  const salRows = data.salaries.map(sal => `
+    <tr>
+      <td>${sal.colaborador}</td>
+      <td class="num">${fmtNum(sal.m2)}</td>
+      <td class="num money">${fmtUSD(sal.total)}</td>
+      <td class="num">${sal.facturas}</td>
+    </tr>`).join('');
+
+  const invRows = data.invoices.map((i, idx) => `
+    <tr class="${idx % 2 === 0 ? 'even' : ''}">
+      <td>${i.fecha}</td>
+      <td>${i.factura}</td>
+      <td>${i.cliente}</td>
+      <td>${i.estado}</td>
+      <td class="num money">${fmtUSD(i.totalFacturado)}</td>
+      <td class="num ${i.saldoPendiente > 0 ? 'pending' : 'paid'}">${i.saldoPendiente > 0 ? fmtUSD(i.saldoPendiente) : 'Pagado'}</td>
+      <td class="num">${i.m2 > 0 ? fmtNum(i.m2) : '—'}</td>
+      <td class="num money">${i.pagoCollab > 0 ? fmtUSD(i.pagoCollab) : '—'}</td>
+      <td>${i.colaborador}</td>
+    </tr>`).join('');
+
+  const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Reporte Apex Concrete — ${periodo}</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: Arial, sans-serif; font-size: 11px; color: #1e293b; padding: 24px; }
+  .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 3px solid #f97316; padding-bottom: 12px; }
+  .header h1 { font-size: 20px; font-weight: 900; color: #1e293b; }
+  .header .period { font-size: 12px; color: #64748b; margin-top: 2px; }
+  .header .logo { font-size: 22px; font-weight: 900; color: #f97316; letter-spacing: -1px; }
+  .section { margin-bottom: 24px; }
+  .section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #64748b; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 10px; }
+  .kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 20px; }
+  .kpi { background: #f8fafc; border-left: 4px solid #f97316; padding: 10px 12px; border-radius: 4px; }
+  .kpi.green { border-color: #10b981; }
+  .kpi.red { border-color: #ef4444; }
+  .kpi.blue { border-color: #3b82f6; }
+  .kpi.amber { border-color: #f59e0b; }
+  .kpi-label { font-size: 9px; font-weight: 700; text-transform: uppercase; color: #94a3b8; }
+  .kpi-value { font-size: 16px; font-weight: 900; color: #1e293b; margin-top: 2px; }
+  table { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+  th { background: #1e293b; color: white; padding: 7px 8px; text-align: left; font-weight: 700; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.5px; }
+  td { padding: 5px 8px; border-bottom: 1px solid #f1f5f9; }
+  tr.even td { background: #f8fafc; }
+  td.num { text-align: right; }
+  td.money { font-weight: 600; }
+  td.pending { color: #d97706; font-weight: 700; }
+  td.paid { color: #10b981; }
+  .sal-table { max-width: 500px; }
+  @media print {
+    body { padding: 12px; }
+    .no-print { display: none; }
+    tr { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="no-print" style="background:#f97316;color:white;padding:8px 16px;margin-bottom:16px;border-radius:6px;display:flex;justify-content:space-between;align-items:center;">
+  <span style="font-weight:700">Vista de impresión — Apex Concrete</span>
+  <button onclick="window.print()" style="background:white;color:#f97316;border:none;padding:6px 16px;font-weight:700;border-radius:4px;cursor:pointer">🖨️ Imprimir / Guardar PDF</button>
+</div>
+
+<div class="header">
+  <div>
+    <h1>REPORTE APEX CONCRETE</h1>
+    <div class="period">Período: ${periodo}</div>
+  </div>
+  <div class="logo">APEX</div>
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi blue"><div class="kpi-label">Total Facturado</div><div class="kpi-value">${fmtUSD(r.totalRevenue)}</div></div>
+  <div class="kpi green"><div class="kpi-label">Total Cobrado</div><div class="kpi-value">${fmtUSD(r.totalRevenue - r.totalReceivable)}</div></div>
+  <div class="kpi amber"><div class="kpi-label">Por Cobrar</div><div class="kpi-value">${fmtUSD(r.totalReceivable)}</div></div>
+  <div class="kpi red"><div class="kpi-label">Costo Collabs</div><div class="kpi-value">${fmtUSD(r.totalCollabCost)}</div></div>
+  <div class="kpi green"><div class="kpi-label">Margen Bruto</div><div class="kpi-value">${fmtUSD(r.grossMargin)}</div></div>
+</div>
+
+<div class="section">
+  <div class="section-title">Salarios por Colaborador</div>
+  <table class="sal-table">
+    <thead><tr><th>Colaborador</th><th>M²</th><th>Total a Pagar</th><th># Facturas</th></tr></thead>
+    <tbody>${salRows}</tbody>
+    <tfoot><tr style="background:#1e293b;color:white;font-weight:900">
+      <td>TOTAL</td>
+      <td class="num">${fmtNum(r.totalM2)}</td>
+      <td class="num">${fmtUSD(r.totalCollabCost)}</td>
+      <td class="num">${fmtNum(data.salaries.reduce((a,x)=>a+x.facturas,0))}</td>
+    </tr></tfoot>
+  </table>
+</div>
+
+<div class="section">
+  <div class="section-title">Detalle de Facturas (${r.invoiceCount} facturas)</div>
+  <table>
+    <thead><tr>
+      <th>Fecha</th><th>Factura</th><th>Cliente</th><th>Estado</th>
+      <th>Total</th><th>Saldo</th><th>M²</th><th>Pago Collab</th><th>Colaborador</th>
+    </tr></thead>
+    <tbody>${invRows}</tbody>
+  </table>
+</div>
+
+</body></html>`;
+
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
 }
 
 // ─── Export button component ────────────────────────────────────────────────
@@ -427,9 +528,8 @@ function ExportButtons({ params }) {
     setLoading(true);
     try {
       const data = await reportsApi.export(params);
-      if (format === 'csv') {
-        downloadCSV(data);
-        toast.success('CSV descargado');
+      if (format === 'print') {
+        openPrintView(data);
       } else {
         const wb = buildWorkbook(data);
         XLSX.writeFile(wb, `apex-reporte-${new Date().toISOString().slice(0,10)}.xlsx`);
@@ -444,7 +544,7 @@ function ExportButtons({ params }) {
 
   return (
     <div className="flex items-center gap-2">
-      <span className="text-xs text-steel-400 font-semibold uppercase tracking-wide">Exportar:</span>
+      <span className="text-xs text-steel-400 font-semibold uppercase tracking-wide hidden sm:inline">Exportar:</span>
       <button
         onClick={() => handleExport('xlsx')}
         disabled={loading}
@@ -456,14 +556,14 @@ function ExportButtons({ params }) {
         Excel
       </button>
       <button
-        onClick={() => handleExport('csv')}
+        onClick={() => handleExport('print')}
         disabled={loading}
-        className="flex items-center gap-1.5 px-3 py-1.5 bg-steel-600 hover:bg-steel-700 text-white rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
+        className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
       >
         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
         </svg>
-        CSV
+        PDF / Imagen
       </button>
     </div>
   );
