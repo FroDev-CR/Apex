@@ -338,7 +338,7 @@ function SalaryTab({ params }) {
                   <div className="text-xs text-steel-500 dark:text-steel-400">{fmtNum(r.totalM2)} m² · {r.invoiceCount} facturas</div>
                 </div>
                 <div className="text-right flex-shrink-0 ml-2">
-                  <div className="text-lg font-black text-steel-900">{fmt(r.totalPay)}</div>
+                  <div className="text-lg font-black text-steel-900 dark:text-white">{fmt(r.totalPay)}</div>
                 </div>
                 <svg className={`w-4 h-4 text-steel-400 flex-shrink-0 transition-transform ${expanded === i ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -452,7 +452,7 @@ function ReceivablesTab({ params }) {
             <tbody className="divide-y divide-concrete-100 dark:divide-steel-700">
               {data.customers.map((c, i) => (
                 <tr key={i} className="hover:bg-concrete-50 dark:hover:bg-steel-700">
-                  <td className="px-4 py-3 font-medium text-steel-900 max-w-[200px] truncate">{c.customerName}</td>
+                  <td className="px-4 py-3 font-medium text-steel-900 dark:text-white max-w-[200px] truncate">{c.customerName}</td>
                   <td className="px-4 py-3 text-right text-steel-500">{c.invoices.length}</td>
                   <td className="px-4 py-3 text-right font-bold text-amber-700">{fmt(c.totalBalance)}</td>
                 </tr>
@@ -500,9 +500,9 @@ function RevenueTab({ params }) {
           <tbody className="divide-y divide-concrete-100 dark:divide-steel-700">
             {data.monthly.map((m, i) => (
               <tr key={i} className="hover:bg-concrete-50 dark:hover:bg-steel-700">
-                <td className="px-4 py-3 font-medium text-steel-900">{m.month}</td>
+                <td className="px-4 py-3 font-medium text-steel-900 dark:text-white">{m.month}</td>
                 <td className="px-4 py-3 text-right text-steel-500">{m.count}</td>
-                <td className="px-4 py-3 text-right text-steel-900">{fmt(m.invoiced)}</td>
+                <td className="px-4 py-3 text-right text-steel-900 dark:text-white">{fmt(m.invoiced)}</td>
                 <td className="px-4 py-3 text-right text-green-700 hidden sm:table-cell">{fmt(m.paid)}</td>
                 <td className="px-4 py-3 text-right text-amber-700">{fmt(m.pending)}</td>
               </tr>
@@ -551,9 +551,9 @@ function MarginTab({ params }) {
           <tbody className="divide-y divide-concrete-100 dark:divide-steel-700">
             {data.customers.map((c, i) => (
               <tr key={i} className="hover:bg-concrete-50 dark:hover:bg-steel-700">
-                <td className="px-4 py-3 font-medium text-steel-900 truncate max-w-[160px]">{c.customerName}</td>
+                <td className="px-4 py-3 font-medium text-steel-900 dark:text-white truncate max-w-[160px]">{c.customerName}</td>
                 <td className="px-4 py-3 text-right text-steel-500 hidden sm:table-cell">{fmtNum(c.m2)}</td>
-                <td className="px-4 py-3 text-right text-steel-900">{fmt(c.revenue)}</td>
+                <td className="px-4 py-3 text-right text-steel-900 dark:text-white">{fmt(c.revenue)}</td>
                 <td className="px-4 py-3 text-right text-red-700 hidden md:table-cell">{fmt(c.collabCost)}</td>
                 <td className="px-4 py-3 text-right font-semibold text-green-700">{fmt(c.margin)}</td>
                 <td className="px-4 py-3 text-right text-steel-500">{fmtPct(c.marginPct)}</td>

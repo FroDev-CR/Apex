@@ -428,7 +428,7 @@ function InvoicesPage() {
           <button
             disabled={filters.page <= 1}
             onClick={() => setFilters(f => ({ ...f, page: f.page - 1 }))}
-            className="px-3 py-1.5 rounded-lg border border-concrete-200 text-sm text-steel-600 disabled:opacity-40 hover:bg-concrete-50 transition-colors"
+            className="px-3 py-1.5 rounded-lg border border-concrete-200 dark:border-steel-700 text-sm text-steel-600 dark:text-steel-300 disabled:opacity-40 hover:bg-concrete-50 dark:hover:bg-steel-700 transition-colors"
           >
             {t('prev')}
           </button>
@@ -438,7 +438,7 @@ function InvoicesPage() {
           <button
             disabled={filters.page >= pagination.pages}
             onClick={() => setFilters(f => ({ ...f, page: f.page + 1 }))}
-            className="px-3 py-1.5 rounded-lg border border-concrete-200 text-sm text-steel-600 disabled:opacity-40 hover:bg-concrete-50 transition-colors"
+            className="px-3 py-1.5 rounded-lg border border-concrete-200 dark:border-steel-700 text-sm text-steel-600 dark:text-steel-300 disabled:opacity-40 hover:bg-concrete-50 dark:hover:bg-steel-700 transition-colors"
           >
             {t('next')}
           </button>

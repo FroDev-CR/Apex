@@ -1,160 +1,169 @@
-# Supply Pro Task Manager
+# Apex Concrete — Invoice & Payroll Manager
 
-A full-stack web application for managing Supply Pro orders with a Joober-style calendar dashboard.
+Aplicación web interna para **Apex Concrete**. Sincroniza facturas desde QuickBooks Online, calcula automáticamente el pago a instaladores por trabajo MONO SLAB y genera reportes exportables.
+
+🔗 **Producción:** [apex-tau-ebon.vercel.app](https://apex-tau-ebon.vercel.app)
+
+---
 
 ## Features
 
-- **Automated Order Scraping**: Playwright-based scraper fetches orders from Supply Pro
-- **Calendar Dashboard**: Drag-and-drop task assignment to collaborators
-- **Salary Management**: Pluggable salary calculation system
-- **Real-time Notifications**: Toast notifications for important events
-- **Auto-sync**: Orders automatically sync every 30 minutes
+- **Sync con QuickBooks Online** — OAuth2, importa todas las facturas con un click
+- **Cálculo automático de planilla** — Detecta líneas POUR MONO SLAB y calcula pago ($1.00/m²)
+- **Reportes interactivos** — Resumen, Salarios, Por Cobrar, Ingresos, Margen
+- **Export Excel + PDF** — Excel con 3 hojas y formatos de número; vista HTML para imprimir/PDF
+- **Pagos externos** — Agrega gastos manuales o recurrentes (diario/semanal/mensual) a la planilla
+- **Email automático** — Reporte diario/semanal/mensual por correo con Excel adjunto
+- **Dark mode** — Toggle sol/luna, persiste en localStorage
+- **Bilingüe** — Español / English, toggle en header
+- **Filtros** — Por período, cliente, tipo de factura, estado de pago, fechas personalizadas
+
+---
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|------------|
-| Scraping | Playwright (Node.js) |
-| Backend | Node.js + Express |
-| Database | MongoDB + Mongoose |
-| Scheduler | node-cron |
-| Frontend | React + Vite + TailwindCSS |
-| Drag & Drop | @dnd-kit/core |
-| Notifications | react-hot-toast |
+| Capa | Tecnología |
+|---|---|
+| Frontend | React 18, Vite, Tailwind CSS |
+| Backend | Node.js 18 (ESModules), Express |
+| Base de datos | MongoDB Atlas (Mongoose) |
+| Email | Nodemailer (SMTP / Gmail) |
+| Excel | SheetJS (xlsx) |
+| Hosting Frontend | Vercel |
+| Hosting Backend | Render |
 
-## Project Structure
+---
+
+## Estructura
 
 ```
-/
-├── backend/                  # Node.js + Express API
-│   ├── src/
-│   │   ├── scraper/          # Playwright scraping logic
-│   │   ├── models/           # Mongoose models
-│   │   ├── routes/           # REST API routes
-│   │   ├── services/         # Business logic
-│   │   ├── salary/           # Salary calculation engine
-│   │   └── index.js
-│   └── package.json
+Apex/
+├── frontend/
+│   └── src/
+│       ├── api/index.js              # Cliente HTTP con retry automático
+│       ├── context/
+│       │   ├── LanguageContext.jsx   # i18n EN/ES
+│       │   └── ThemeContext.jsx      # Dark/light mode
+│       ├── components/Layout.jsx     # Header + nav
+│       └── pages/
+│           ├── ReportsPage.jsx       # Reportes + FAB export + pagos externos
+│           ├── InvoicesPage.jsx      # Facturas con filtros
+│           └── SettingsPage.jsx      # QBO connection + config de email
 │
-├── frontend/                 # React + Vite
-│   ├── src/
-│   │   ├── components/       # React components
-│   │   ├── hooks/            # Custom hooks
-│   │   ├── pages/            # Page components
-│   │   └── main.jsx
-│   └── package.json
-│
-└── README.md
+└── backend/
+    └── src/
+        ├── models/
+        │   ├── Invoice.js            # Factura QBO
+        │   ├── Collaborator.js       # Instalador
+        │   ├── ExternalPayment.js    # Pagos manuales/recurrentes
+        │   └── AppSettings.js        # Config singleton (emails, frecuencia)
+        ├── routes/
+        │   ├── qbo.js               # OAuth2 + sync
+        │   ├── invoices.js          # CRUD + recalculate
+        │   ├── reports.js           # Endpoints de reportes
+        │   ├── payments.js          # Pagos externos
+        │   └── appSettings.js       # Configuración
+        ├── salary/salaryRules.js    # Lógica de cálculo ($1.00/m²)
+        └── services/
+            ├── emailService.js      # Reporte por correo
+            └── cronJobs.js          # Scheduler (cada minuto)
 ```
 
-## Quick Start
+---
 
-### Prerequisites
+## Setup local
 
-- Node.js 18+
-- MongoDB (local or Atlas)
-- Supply Pro account credentials
-
-### Backend Setup
+### Backend
 
 ```bash
 cd backend
 npm install
-npx playwright install chromium
-cp .env.example .env
-# Edit .env with your credentials
-npm run seed  # Create sample collaborators
-npm run dev   # Start development server
+cp .env.example .env   # Editar con tus credenciales
+npm run dev
 ```
 
-### Frontend Setup
+**Variables de entorno backend (`.env`):**
+
+```env
+MONGO_URI=mongodb+srv://...
+QBO_CLIENT_ID=...
+QBO_CLIENT_SECRET=...
+QBO_REDIRECT_URI=http://localhost:3001/api/qbo/callback
+FRONTEND_URL=http://localhost:5173
+
+# Email (opcional — si no se pone, no envía reportes)
+SMTP_HOST=smtp.gmail.com
+SMTP_USER=tu@gmail.com
+SMTP_PASS=xxxx xxxx xxxx xxxx
+```
+
+### Frontend
 
 ```bash
 cd frontend
 npm install
 cp .env.example .env
-# Edit .env with your backend URL
-npm run dev   # Start development server
+npm run dev
 ```
 
-## Environment Variables
+**Variables de entorno frontend (`.env`):**
 
-### Backend (.env)
+```env
+VITE_API_URL=http://localhost:3001
+```
 
-| Variable | Description |
-|----------|-------------|
-| `SUPPLYPRO_EMAIL` | Supply Pro login email |
-| `SUPPLYPRO_PASSWORD` | Supply Pro login password |
-| `SUPPLYPRO_URL` | Supply Pro base URL |
-| `MONGODB_URI` | MongoDB connection string |
-| `PORT` | Server port (default: 3001) |
-| `CRON_INTERVAL` | Cron expression for auto-sync |
-| `FRONTEND_URL` | Frontend URL for CORS |
+---
 
-### Frontend (.env)
+## Despliegue
 
-| Variable | Description |
-|----------|-------------|
-| `VITE_API_URL` | Backend API URL |
+### Backend → Render
+1. New Web Service → conectar repo
+2. Root directory: `backend`
+3. Build command: `npm install`
+4. Start command: `node src/index.js`
+5. Agregar variables de entorno (ver arriba + `PORT` lo asigna Render automáticamente)
+
+### Frontend → Vercel
+1. Import repo → root directory: `frontend`
+2. Build: `npm run build` / Output: `dist`
+3. Variable de entorno: `VITE_API_URL=https://apex-w9h5.onrender.com`
+
+---
 
 ## API Endpoints
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/scrape` | Trigger manual scrape |
-| GET | `/api/orders` | List orders (filterable) |
-| GET | `/api/orders/:id` | Get order details |
-| PATCH | `/api/orders/:id/assign` | Assign order to collaborator |
-| GET | `/api/collaborators` | List collaborators |
-| POST | `/api/collaborators` | Create collaborator |
-| PUT | `/api/collaborators/:id` | Update collaborator |
-| GET | `/api/collaborators/:id/salary` | Get salary summary |
-| GET | `/api/calendar` | Get calendar data |
+| Método | Endpoint | Descripción |
+|---|---|---|
+| GET | `/api/health` | Health check |
+| GET | `/api/qbo/status` | Estado de conexión QBO |
+| GET | `/api/qbo/connect` | Iniciar OAuth (redirige a Intuit) |
+| POST | `/api/qbo/sync` | Sincronizar facturas |
+| POST | `/api/qbo/disconnect` | Desconectar QBO |
+| GET | `/api/invoices` | Listar facturas (paginado + filtros) |
+| PATCH | `/api/invoices/:id/collaborator` | Asignar instalador |
+| POST | `/api/invoices/recalculate` | Recalcular campos MONO SLAB en todas |
+| GET | `/api/reports/overview` | KPIs generales |
+| GET | `/api/reports/salary` | Planilla por colaborador |
+| GET | `/api/reports/receivables` | Cuentas por cobrar |
+| GET | `/api/reports/revenue` | Ingresos mensuales |
+| GET | `/api/reports/margin` | Margen por cliente |
+| GET | `/api/reports/export` | JSON completo para Excel/PDF |
+| GET | `/api/payments` | Pagos externos |
+| POST | `/api/payments` | Crear pago externo |
+| DELETE | `/api/payments/:id` | Eliminar pago externo |
+| GET | `/api/settings` | Leer configuración |
+| PATCH | `/api/settings` | Actualizar configuración |
 
-## Deployment
+---
 
-### Backend (Railway/Render)
+## Regla de salario
 
-1. Create new project on Railway or Render
-2. Connect your repository
-3. Set build command: `npm install && npx playwright install chromium`
-4. Set start command: `node src/index.js`
-5. Add all environment variables from `.env.example`
+```js
+// Solo líneas que contengan "MONO SLAB" en productService O description
+// (QBO a veces deja productService vacío y pone el nombre en description)
+pay = monoSlabQty × $1.00
+```
 
-### Frontend (Vercel)
+---
 
-1. Import project to Vercel
-2. Set root directory: `frontend`
-3. Build command: `npm run build`
-4. Output directory: `dist`
-5. Add `VITE_API_URL` environment variable
-
-## Salary Calculation
-
-Salary formulas are defined in `backend/src/salary/salaryRules.js`.
-The file contains placeholder functions with TODO comments explaining how to implement:
-
-- Fixed amount per order
-- Percentage commission
-- Hourly rate calculations
-- Tiered pricing
-- Role-based multipliers
-
-## Development Notes
-
-### Design Decisions
-
-1. **Session Persistence**: Playwright cookies are saved to minimize logins
-2. **Deduplication**: Orders are upserted using `orderId` as unique key
-3. **Optimistic Updates**: Frontend updates UI before API confirmation
-4. **Color Coding**: Each collaborator has a unique color for visual clarity
-
-### Scraper Retry Logic
-
-The scraper implements exponential backoff:
-- Max 3 retries
-- Delays: 1s, 2s, 4s
-
-## License
-
-MIT
+> Para contexto técnico detallado ver [`CONTEXT.md`](./CONTEXT.md)
