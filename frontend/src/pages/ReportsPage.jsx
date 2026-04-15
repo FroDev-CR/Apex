@@ -363,6 +363,7 @@ function ReportsPage() {
   const [preset, setPreset] = useState('this_month');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     if (preset !== 'custom' && preset !== 'all') {
@@ -375,7 +376,14 @@ function ReportsPage() {
     }
   }, [preset]);
 
-  const params = {};
+  // Re-fetch when sync completes
+  useEffect(() => {
+    const handler = () => setRefreshKey(k => k + 1);
+    window.addEventListener('invoices-synced', handler);
+    return () => window.removeEventListener('invoices-synced', handler);
+  }, []);
+
+  const params = { refreshKey };
   if (dateFrom) params.dateFrom = dateFrom;
   if (dateTo) params.dateTo = dateTo;
 

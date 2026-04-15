@@ -57,16 +57,21 @@ function Layout({ children }) {
   const handleSync = async () => {
     if (syncing) return;
     setSyncing(true);
-    toast.loading('Sincronizando facturas de QuickBooks...', { id: 'sync' });
+    toast.loading('Conectando con QuickBooks...', { id: 'sync' });
     try {
       const result = await qboApi.sync();
-      toast.success(
-        `Listo! ${result.inserted} nuevas, ${result.updated} actualizadas`,
-        { id: 'sync', duration: 5000 }
-      );
+      const msg = result.total === 0
+        ? 'Sin cambios — todo está al día'
+        : `${result.total} facturas sincronizadas (${result.inserted} nuevas, ${result.updated} actualizadas)`;
+      toast.success(msg, { id: 'sync', duration: 6000 });
       window.dispatchEvent(new CustomEvent('invoices-synced'));
     } catch (error) {
-      toast.error(`Error: ${error.message}`, { id: 'sync' });
+      toast.error(
+        error.message.includes('not connected')
+          ? 'QuickBooks no conectado — ve a Configuración'
+          : `Error: ${error.message}`,
+        { id: 'sync', duration: 6000 }
+      );
     } finally {
       setSyncing(false);
     }
