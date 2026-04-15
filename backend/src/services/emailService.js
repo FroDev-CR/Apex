@@ -2,6 +2,7 @@ import nodemailer from 'nodemailer';
 import * as XLSX from 'xlsx';
 import { Invoice } from '../models/Invoice.js';
 import { ExternalPayment } from '../models/ExternalPayment.js';
+import { getSettings } from '../models/AppSettings.js';
 
 function createTransport() {
   return nodemailer.createTransport({
@@ -15,7 +16,10 @@ function createTransport() {
   });
 }
 
-function getRecipients() {
+async function getRecipients() {
+  const s = await getSettings();
+  // DB takes priority over env var
+  if (s.reportEmails && s.reportEmails.length > 0) return s.reportEmails;
   const raw = process.env.REPORT_EMAILS || '';
   return raw.split(',').map(e => e.trim()).filter(Boolean);
 }
@@ -184,7 +188,7 @@ function buildHtmlEmail(data) {
 }
 
 export async function sendDailyReport() {
-  const recipients = getRecipients();
+  const recipients = await getRecipients();
   if (recipients.length === 0) {
     console.log('📧 REPORT_EMAILS no configurado, saltando envío de reporte');
     return;

@@ -103,15 +103,25 @@ function OverviewTab({ params }) {
 }
 
 // ─── External Payment Modal ───────────────────────────────────────────────
+const FREQ_LABELS = [
+  { id: 'none',    label: 'Una vez' },
+  { id: 'daily',   label: 'Diario' },
+  { id: 'weekly',  label: 'Semanal' },
+  { id: 'monthly', label: 'Mensual' },
+];
+const DAYS_ES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+
 function ExternalPaymentModal({ onClose, onSaved }) {
   const { t } = useLanguage();
-  const [name, setName]           = useState('');
-  const [amount, setAmount]       = useState('');
-  const [isAuto, setIsAuto]       = useState(false);
-  const [dayOfMonth, setDay]      = useState(1);
-  const [hour, setHour]           = useState(8);
-  const [saving, setSaving]       = useState(false);
+  const today = new Date();
+  const [name, setName]         = useState('');
+  const [amount, setAmount]     = useState('');
+  const [freq, setFreq]         = useState('none');
+  const [hour, setHour]         = useState(8);
+  const [dayOfWeek, setDow]     = useState(today.getDay());
+  const [saving, setSaving]     = useState(false);
 
+  const dayOfMonth = today.getDate(); // always inferred from today
   const valid = name.trim() && Number(amount) > 0;
 
   const handleSave = async () => {
@@ -121,8 +131,13 @@ function ExternalPaymentModal({ onClose, onSaved }) {
       await paymentsApi.create({
         name: name.trim(),
         amount: Number(amount),
-        isRecurring: isAuto,
-        schedule: isAuto ? { dayOfMonth: Number(dayOfMonth), hour: Number(hour), minute: 0 } : undefined,
+        isRecurring: freq !== 'none',
+        schedule: freq !== 'none' ? {
+          frequency:  freq,
+          dayOfWeek:  Number(dayOfWeek),
+          dayOfMonth,
+          hour:       Number(hour),
+        } : undefined,
       });
       toast.success('Pago externo guardado');
       onSaved();
@@ -134,12 +149,18 @@ function ExternalPaymentModal({ onClose, onSaved }) {
     }
   };
 
-  const inputCls = 'w-full border border-concrete-200 dark:border-steel-600 rounded-lg px-3 py-2 text-sm text-steel-800 dark:text-steel-100 bg-white dark:bg-steel-700 focus:outline-none focus:ring-2 focus:ring-primary-400';
+  const iCls = 'w-full border border-concrete-200 dark:border-steel-600 rounded-lg px-3 py-2 text-sm text-steel-800 dark:text-steel-100 bg-white dark:bg-steel-700 focus:outline-none focus:ring-2 focus:ring-primary-400';
+  const lCls = 'block text-xs text-steel-400 dark:text-steel-400 uppercase tracking-wide font-semibold mb-1';
+
+  const preview = freq === 'daily'   ? `Todos los días a las ${String(hour).padStart(2,'0')}:00`
+                : freq === 'weekly'  ? `Cada ${DAYS_ES[dayOfWeek]} a las ${String(hour).padStart(2,'0')}:00`
+                : freq === 'monthly' ? `Cada mes el día ${dayOfMonth} a las ${String(hour).padStart(2,'0')}:00`
+                : '';
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
       onClick={onClose}>
-      <div className="bg-white dark:bg-steel-800 rounded-t-2xl sm:rounded-2xl shadow-steel-lg w-full sm:max-w-sm"
+      <div className="bg-white dark:bg-steel-800 rounded-t-2xl sm:rounded-2xl shadow-steel-lg w-full sm:max-w-md"
         onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-concrete-100 dark:border-steel-700">
@@ -154,57 +175,68 @@ function ExternalPaymentModal({ onClose, onSaved }) {
         <div className="px-5 py-4 space-y-4">
           {/* Name */}
           <div>
-            <label className="block text-xs text-steel-400 dark:text-steel-400 uppercase tracking-wide font-semibold mb-1">{t('ext_pay_name')}</label>
-            <input className={inputCls} placeholder="Ej: Alquiler de equipo" value={name}
+            <label className={lCls}>{t('ext_pay_name')}</label>
+            <input className={iCls} placeholder="Ej: Alquiler de equipo" value={name}
               onChange={e => setName(e.target.value)} />
           </div>
 
           {/* Amount */}
           <div>
-            <label className="block text-xs text-steel-400 dark:text-steel-400 uppercase tracking-wide font-semibold mb-1">{t('ext_pay_amount')}</label>
+            <label className={lCls}>{t('ext_pay_amount')}</label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-steel-400 text-sm font-semibold">$</span>
-              <input className={`${inputCls} pl-7`} type="number" min="0" step="0.01"
+              <input className={`${iCls} pl-7`} type="number" min="0" step="0.01"
                 placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)} />
             </div>
           </div>
 
-          {/* Auto switch */}
-          <div className="flex items-center justify-between py-1">
-            <div>
-              <div className="text-sm font-semibold text-steel-800 dark:text-steel-100">{t('ext_pay_auto')}</div>
-              <div className="text-xs text-steel-400 dark:text-steel-500 mt-0.5">{t('ext_pay_auto_hint')}</div>
+          {/* Frequency */}
+          <div>
+            <label className={lCls}>Frecuencia</label>
+            <div className="grid grid-cols-4 gap-1.5">
+              {FREQ_LABELS.map(f => (
+                <button key={f.id} onClick={() => setFreq(f.id)}
+                  className={`py-2 rounded-lg text-xs font-semibold border-2 transition-all ${
+                    freq === f.id
+                      ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
+                      : 'border-concrete-200 dark:border-steel-600 text-steel-500 dark:text-steel-400'
+                  }`}>
+                  {f.label}
+                </button>
+              ))}
             </div>
-            <button
-              onClick={() => setIsAuto(a => !a)}
-              className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${isAuto ? 'bg-primary-500' : 'bg-steel-200 dark:bg-steel-600'}`}
-            >
-              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${isAuto ? 'translate-x-5' : ''}`} />
-            </button>
           </div>
 
-          {/* Schedule — visible only when auto is on */}
-          {isAuto && (
-            <div className="bg-concrete-50 dark:bg-steel-700/50 rounded-xl p-4 space-y-3 border border-concrete-200 dark:border-steel-600">
-              <div className="text-xs text-steel-400 uppercase tracking-wide font-semibold">Horario automático</div>
+          {/* Schedule details */}
+          {freq !== 'none' && (
+            <div className="bg-concrete-50 dark:bg-steel-700/50 rounded-xl p-3 space-y-3 border border-concrete-200 dark:border-steel-600">
               <div className="grid grid-cols-2 gap-3">
+                {freq === 'weekly' && (
+                  <div>
+                    <label className={lCls}>Día</label>
+                    <select className={iCls} value={dayOfWeek} onChange={e => setDow(e.target.value)}>
+                      {DAYS_ES.map((d, i) => <option key={i} value={i}>{d}</option>)}
+                    </select>
+                  </div>
+                )}
+                {freq === 'monthly' && (
+                  <div>
+                    <label className={lCls}>Día del mes</label>
+                    <div className={`${iCls} bg-concrete-100 dark:bg-steel-600 text-steel-500 dark:text-steel-300`}>
+                      Día {dayOfMonth} (hoy)
+                    </div>
+                  </div>
+                )}
                 <div>
-                  <label className="block text-xs text-steel-500 dark:text-steel-400 mb-1">{t('ext_pay_day')}</label>
-                  <select className={inputCls} value={dayOfMonth} onChange={e => setDay(e.target.value)}>
-                    {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
-                      <option key={d} value={d}>Día {d}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs text-steel-500 dark:text-steel-400 mb-1">{t('ext_pay_time')}</label>
-                  <select className={inputCls} value={hour} onChange={e => setHour(e.target.value)}>
+                  <label className={lCls}>{t('ext_pay_time')}</label>
+                  <select className={iCls} value={hour} onChange={e => setHour(e.target.value)}>
                     {Array.from({ length: 24 }, (_, i) => i).map(h => (
                       <option key={h} value={h}>{String(h).padStart(2,'0')}:00</option>
                     ))}
                   </select>
                 </div>
               </div>
+              <div className="text-xs text-primary-600 dark:text-primary-400 font-medium">{preview}</div>
             </div>
           )}
         </div>
@@ -300,10 +332,10 @@ function SalaryTab({ params }) {
                   {r.collaborator ? r.collaborator.name.charAt(0).toUpperCase() : '?'}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-steel-900 truncate">
+                  <div className="font-semibold text-steel-900 dark:text-white truncate">
                     {r.collaborator?.name || <span className="text-steel-400 italic">{t('unassigned')}</span>}
                   </div>
-                  <div className="text-xs text-steel-500">{fmtNum(r.totalM2)} m² · {r.invoiceCount} facturas</div>
+                  <div className="text-xs text-steel-500 dark:text-steel-400">{fmtNum(r.totalM2)} m² · {r.invoiceCount} facturas</div>
                 </div>
                 <div className="text-right flex-shrink-0 ml-2">
                   <div className="text-lg font-black text-steel-900">{fmt(r.totalPay)}</div>
@@ -328,10 +360,10 @@ function SalaryTab({ params }) {
                       {r.breakdown.map((b, j) => (
                         <tr key={j} className="hover:bg-concrete-50 dark:hover:bg-steel-700">
                           <td className="px-4 py-2 font-mono text-steel-700 dark:text-steel-300">#{b.docNumber}</td>
-                          <td className="px-4 py-2 text-steel-600 truncate max-w-[160px] hidden sm:table-cell">{b.customerName}</td>
-                          <td className="px-4 py-2 text-steel-500 whitespace-nowrap">{fmtDate(b.txnDate)}</td>
-                          <td className="px-4 py-2 text-right text-steel-700">{fmtNum(b.monoSlabQty)}</td>
-                          <td className="px-4 py-2 text-right font-semibold text-steel-900">{fmt(b.pay)}</td>
+                          <td className="px-4 py-2 text-steel-600 dark:text-steel-300 truncate max-w-[160px] hidden sm:table-cell">{b.customerName}</td>
+                          <td className="px-4 py-2 text-steel-500 dark:text-steel-400 whitespace-nowrap">{fmtDate(b.txnDate)}</td>
+                          <td className="px-4 py-2 text-right text-steel-700 dark:text-steel-200">{fmtNum(b.monoSlabQty)}</td>
+                          <td className="px-4 py-2 text-right font-semibold text-steel-900 dark:text-white">{fmt(b.pay)}</td>
                         </tr>
                       ))}
                     </tbody>

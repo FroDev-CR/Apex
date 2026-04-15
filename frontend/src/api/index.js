@@ -73,6 +73,12 @@ export const paymentsApi = {
   delete: (id)     => fetchApi(`/api/payments/${id}`, { method: 'DELETE' }),
 };
 
+// ─── App Settings ───────────────────────────────────────────────────────────
+export const settingsApi = {
+  get:    ()       => fetchApi('/api/settings'),
+  patch:  (data)   => fetchApi('/api/settings', { method: 'PATCH', body: JSON.stringify(data) }),
+};
+
 // ─── Collaborators ──────────────────────────────────────────────────────────
 export const collaboratorsApi = {
   list: (params = {}) => {

@@ -74,19 +74,19 @@ function InvoiceModal({ invoice, collaborators, onClose, onCollaboratorChange })
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <div className="text-xs text-steel-400 uppercase tracking-wide mb-1">Empresa facturada</div>
-              <div className="font-medium text-steel-900">{invoice.billingCompany || invoice.customerName}</div>
+              <div className="font-medium text-steel-900 dark:text-white">{invoice.billingCompany || invoice.customerName}</div>
             </div>
             <div>
               <div className="text-xs text-steel-400 uppercase tracking-wide mb-1">Fecha</div>
-              <div className="font-medium text-steel-900">{fmtDate(invoice.txnDate)}</div>
+              <div className="font-medium text-steel-900 dark:text-white">{fmtDate(invoice.txnDate)}</div>
             </div>
             <div>
               <div className="text-xs text-steel-400 uppercase tracking-wide mb-1">Vencimiento</div>
-              <div className="font-medium text-steel-900">{fmtDate(invoice.dueDate)}</div>
+              <div className="font-medium text-steel-900 dark:text-white">{fmtDate(invoice.dueDate)}</div>
             </div>
             <div>
               <div className="text-xs text-steel-400 uppercase tracking-wide mb-1">Builder #</div>
-              <div className="font-medium text-steel-900">{invoice.builderNumber || '—'}</div>
+              <div className="font-medium text-steel-900 dark:text-white">{invoice.builderNumber || '—'}</div>
             </div>
           </div>
 
@@ -94,7 +94,7 @@ function InvoiceModal({ invoice, collaborators, onClose, onCollaboratorChange })
           <div className="grid grid-cols-3 gap-3">
             <div className="bg-concrete-50 rounded-xl p-3 text-center">
               <div className="text-xs text-steel-400 uppercase mb-1">Total facturado</div>
-              <div className="text-lg font-black text-steel-900">{fmt(invoice.totalAmount)}</div>
+              <div className="text-lg font-black text-steel-900 dark:text-white">{fmt(invoice.totalAmount)}</div>
             </div>
             <div className={`rounded-xl p-3 text-center ${invoice.balance > 0 ? 'bg-amber-50' : 'bg-green-50'}`}>
               <div className="text-xs text-steel-400 uppercase mb-1">Saldo pendiente</div>
@@ -125,14 +125,14 @@ function InvoiceModal({ invoice, collaborators, onClose, onCollaboratorChange })
                   {invoice.lineItems?.map((l, i) => (
                     <tr key={i} className={l.productService?.toUpperCase().includes('MONO SLAB') ? 'bg-primary-50/50' : ''}>
                       <td className="px-3 py-2">
-                        <div className="font-medium text-steel-900">{l.productService}</div>
+                        <div className="font-medium text-steel-900 dark:text-white">{l.productService}</div>
                         {l.description && l.description !== l.productService && (
                           <div className="text-xs text-steel-400">{l.description}</div>
                         )}
                       </td>
-                      <td className="px-3 py-2 text-right text-steel-700">{fmtNum(l.qty)}</td>
-                      <td className="px-3 py-2 text-right text-steel-700">{fmt(l.rate)}</td>
-                      <td className="px-3 py-2 text-right font-semibold text-steel-900">{fmt(l.amount)}</td>
+                      <td className="px-3 py-2 text-right text-steel-700 dark:text-steel-200">{fmtNum(l.qty)}</td>
+                      <td className="px-3 py-2 text-right text-steel-700 dark:text-steel-200">{fmt(l.rate)}</td>
+                      <td className="px-3 py-2 text-right font-semibold text-steel-900 dark:text-white">{fmt(l.amount)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -147,7 +147,7 @@ function InvoiceModal({ invoice, collaborators, onClose, onCollaboratorChange })
               <select
                 value={selectedCollab}
                 onChange={e => setSelectedCollab(e.target.value)}
-                className="flex-1 border border-concrete-200 rounded-lg px-3 py-2 text-sm text-steel-700 focus:outline-none focus:ring-2 focus:ring-primary-400"
+                className="flex-1 border border-concrete-200 dark:border-steel-600 rounded-lg px-3 py-2 text-sm text-steel-700 dark:text-steel-100 bg-white dark:bg-steel-700 focus:outline-none focus:ring-2 focus:ring-primary-400"
               >
                 <option value="">Sin asignar</option>
                 {collaborators.map(c => (
@@ -271,7 +271,7 @@ function InvoicesPage() {
                 placeholder={t('filter_customer')}
                 value={filters.customer}
                 onChange={e => setFilter('customer', e.target.value)}
-                className="w-full border border-concrete-200 rounded-lg px-3 py-2 text-sm text-steel-700 focus:outline-none focus:ring-2 focus:ring-primary-400"
+                className="w-full border border-concrete-200 dark:border-steel-600 rounded-lg px-3 py-2 text-sm text-steel-700 dark:text-steel-100 bg-white dark:bg-steel-700 focus:outline-none focus:ring-2 focus:ring-primary-400"
               />
             </div>
 
@@ -281,7 +281,7 @@ function InvoicesPage() {
               <select
                 value={filters.hasMonoSlab}
                 onChange={e => setFilter('hasMonoSlab', e.target.value)}
-                className="w-full border border-concrete-200 rounded-lg px-3 py-2 text-sm text-steel-700 focus:outline-none focus:ring-2 focus:ring-primary-400"
+                className="w-full border border-concrete-200 dark:border-steel-600 rounded-lg px-3 py-2 text-sm text-steel-700 dark:text-steel-100 bg-white dark:bg-steel-700 focus:outline-none focus:ring-2 focus:ring-primary-400"
               >
                 <option value="">{t('filter_type_all')}</option>
                 <option value="true">{t('filter_mono')}</option>
@@ -295,7 +295,7 @@ function InvoicesPage() {
               <select
                 value={filters.unpaidOnly}
                 onChange={e => setFilter('unpaidOnly', e.target.value)}
-                className="w-full border border-concrete-200 rounded-lg px-3 py-2 text-sm text-steel-700 focus:outline-none focus:ring-2 focus:ring-primary-400"
+                className="w-full border border-concrete-200 dark:border-steel-600 rounded-lg px-3 py-2 text-sm text-steel-700 dark:text-steel-100 bg-white dark:bg-steel-700 focus:outline-none focus:ring-2 focus:ring-primary-400"
               >
                 <option value="">{t('filter_all_inv')}</option>
                 <option value="true">{t('filter_unpaid')}</option>
@@ -309,7 +309,7 @@ function InvoicesPage() {
                 type="date"
                 value={filters.dateFrom}
                 onChange={e => setFilter('dateFrom', e.target.value)}
-                className="w-full border border-concrete-200 rounded-lg px-3 py-2 text-sm text-steel-700 focus:outline-none focus:ring-2 focus:ring-primary-400"
+                className="w-full border border-concrete-200 dark:border-steel-600 rounded-lg px-3 py-2 text-sm text-steel-700 dark:text-steel-100 bg-white dark:bg-steel-700 focus:outline-none focus:ring-2 focus:ring-primary-400"
               />
             </div>
             <div>
@@ -318,7 +318,7 @@ function InvoicesPage() {
                 type="date"
                 value={filters.dateTo}
                 onChange={e => setFilter('dateTo', e.target.value)}
-                className="w-full border border-concrete-200 rounded-lg px-3 py-2 text-sm text-steel-700 focus:outline-none focus:ring-2 focus:ring-primary-400"
+                className="w-full border border-concrete-200 dark:border-steel-600 rounded-lg px-3 py-2 text-sm text-steel-700 dark:text-steel-100 bg-white dark:bg-steel-700 focus:outline-none focus:ring-2 focus:ring-primary-400"
               />
             </div>
           </div>
@@ -378,9 +378,9 @@ function InvoicesPage() {
                     onClick={() => setSelectedInvoice(inv)}
                     className="hover:bg-concrete-50 dark:hover:bg-steel-700 cursor-pointer transition-colors"
                   >
-                    <td className="px-4 py-3 font-mono text-steel-700 font-medium">#{inv.docNumber}</td>
+                    <td className="px-4 py-3 font-mono text-steel-700 dark:text-steel-200 font-medium">#{inv.docNumber}</td>
                     <td className="px-4 py-3">
-                      <div className="font-medium text-steel-900 truncate max-w-[180px]">{inv.customerName}</div>
+                      <div className="font-medium text-steel-900 dark:text-white truncate max-w-[180px]">{inv.customerName}</div>
                       {inv.estado && <EstadoBadge estado={inv.estado} />}
                     </td>
                     <td className="px-4 py-3 text-steel-500 hidden md:table-cell">{fmtDate(inv.txnDate)}</td>
@@ -389,7 +389,7 @@ function InvoicesPage() {
                         <div className="flex items-center gap-1.5">
                           <div className="w-5 h-5 rounded-full flex-shrink-0"
                             style={{ backgroundColor: inv.collaborator.color }} />
-                          <span className="text-steel-700 text-xs">{inv.collaborator.name}</span>
+                          <span className="text-steel-700 dark:text-steel-200 text-xs">{inv.collaborator.name}</span>
                         </div>
                       ) : (
                         <span className="text-steel-300 text-xs">—</span>
@@ -401,7 +401,7 @@ function InvoicesPage() {
                         : <span className="text-xs text-steel-300">Otro</span>
                       }
                     </td>
-                    <td className="px-4 py-3 text-right font-semibold text-steel-900">{fmt(inv.totalAmount)}</td>
+                    <td className="px-4 py-3 text-right font-semibold text-steel-900 dark:text-white">{fmt(inv.totalAmount)}</td>
                     <td className="px-4 py-3 text-right hidden sm:table-cell">
                       {inv.balance > 0
                         ? <span className="text-amber-700 font-semibold">{fmt(inv.balance)}</span>
@@ -432,7 +432,7 @@ function InvoicesPage() {
           >
             {t('prev')}
           </button>
-          <span className="text-sm text-steel-500">
+          <span className="text-sm text-steel-500 dark:text-steel-400">
             {t('page')} {filters.page} {t('of')} {pagination.pages}
           </span>
           <button

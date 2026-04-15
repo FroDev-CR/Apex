@@ -8,6 +8,7 @@ import { invoiceRoutes } from './routes/invoices.js';
 import { reportRoutes } from './routes/reports.js';
 import { collaboratorRoutes } from './routes/collaborators.js';
 import { paymentRoutes } from './routes/payments.js';
+import { appSettingsRoutes } from './routes/appSettings.js';
 import { startCronJobs } from './services/cronJobs.js';
 
 const app = express();
@@ -44,6 +45,7 @@ app.use('/api/invoices', invoiceRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/collaborators', collaboratorRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/settings', appSettingsRoutes);
 
 app.use((err, req, res, next) => {
   console.error('❌ Error:', err.message);
