@@ -75,7 +75,13 @@ export async function getAccessToken() {
     }
   );
 
-  await saveTokens({ ...response.data, realmId: tokens.realmId });
+  await saveTokens({
+    accessToken: response.data.access_token,
+    refreshToken: response.data.refresh_token,
+    realmId: tokens.realmId,
+    expiresIn: response.data.expires_in,
+    xRefreshTokenExpiresIn: response.data.x_refresh_token_expires_in
+  });
   console.log('✅ QBO access token refreshed');
   return { accessToken: response.data.access_token, realmId: tokens.realmId };
 }

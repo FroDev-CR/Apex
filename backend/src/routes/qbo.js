@@ -50,7 +50,13 @@ qboRoutes.get('/callback', async (req, res) => {
       }
     );
 
-    await saveTokens({ ...response.data, realmId });
+    await saveTokens({
+      accessToken: response.data.access_token,
+      refreshToken: response.data.refresh_token,
+      realmId,
+      expiresIn: response.data.expires_in,
+      xRefreshTokenExpiresIn: response.data.x_refresh_token_expires_in
+    });
 
     // Redirect to frontend with success
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
