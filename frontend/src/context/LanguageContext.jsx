@@ -4,6 +4,7 @@ const ES = {
   nav_reports: 'Reportes', nav_invoices: 'Facturas', nav_settings: 'Config',
   tab_overview: 'Resumen', tab_salary: 'Salarios', tab_receivables: 'Por Cobrar',
   tab_revenue: 'Ingresos', tab_margin: 'Margen',
+  preset_today_yesterday: 'Ayer y hoy',
   preset_this_month: 'Este mes', preset_last_month: 'Mes anterior',
   preset_last_90: 'Últimos 90 días', preset_this_year: 'Este año', preset_all: 'Todo',
   export_excel: 'Excel', export_pdf: 'PDF / Imagen', export_title: 'Exportar',
@@ -24,12 +25,18 @@ const ES = {
   unassigned: 'Sin asignar', loading: 'Cargando...', page: 'Página',
   prev: '← Anterior', next: 'Siguiente →', of: 'de',
   settings_title: 'Configuración', language: 'Idioma',
+  ext_pay_add: 'Agregar pago externo', ext_pay_name: 'Nombre del pago',
+  ext_pay_amount: 'Cantidad', ext_pay_auto: 'Pago automático',
+  ext_pay_auto_hint: 'Se agregará automáticamente según el horario', ext_pay_day: 'Día del mes',
+  ext_pay_time: 'Hora', ext_pay_save: 'Guardar pago', ext_pay_cancel: 'Cancelar',
+  ext_pay_title: 'Pagos externos', ext_pay_delete: 'Eliminar',
 };
 
 const EN = {
   nav_reports: 'Reports', nav_invoices: 'Invoices', nav_settings: 'Settings',
   tab_overview: 'Overview', tab_salary: 'Payroll', tab_receivables: 'Receivables',
   tab_revenue: 'Revenue', tab_margin: 'Margin',
+  preset_today_yesterday: 'Today & Yesterday',
   preset_this_month: 'This month', preset_last_month: 'Last month',
   preset_last_90: 'Last 90 days', preset_this_year: 'This year', preset_all: 'All time',
   export_excel: 'Excel', export_pdf: 'PDF / Image', export_title: 'Export',
@@ -50,6 +57,11 @@ const EN = {
   unassigned: 'Unassigned', loading: 'Loading...', page: 'Page',
   prev: '← Prev', next: 'Next →', of: 'of',
   settings_title: 'Settings', language: 'Language',
+  ext_pay_add: 'Add external payment', ext_pay_name: 'Payment name',
+  ext_pay_amount: 'Amount', ext_pay_auto: 'Automatic payment',
+  ext_pay_auto_hint: 'Will be added automatically on schedule', ext_pay_day: 'Day of month',
+  ext_pay_time: 'Time', ext_pay_save: 'Save payment', ext_pay_cancel: 'Cancel',
+  ext_pay_title: 'External payments', ext_pay_delete: 'Delete',
 };
 
 const LanguageContext = createContext(null);

@@ -66,6 +66,13 @@ export const reportsApi = {
   }
 };
 
+// ─── External Payments ──────────────────────────────────────────────────────
+export const paymentsApi = {
+  list:   ()       => fetchApi('/api/payments'),
+  create: (data)   => fetchApi('/api/payments', { method: 'POST', body: JSON.stringify(data) }),
+  delete: (id)     => fetchApi(`/api/payments/${id}`, { method: 'DELETE' }),
+};
+
 // ─── Collaborators ──────────────────────────────────────────────────────────
 export const collaboratorsApi = {
   list: (params = {}) => {

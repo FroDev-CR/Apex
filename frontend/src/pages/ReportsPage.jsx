@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
-import { reportsApi } from '../api';
+import { reportsApi, paymentsApi } from '../api';
 import { useLanguage } from '../context/LanguageContext';
 
 // ─── Formatters ────────────────────────────────────────────────────────────
@@ -14,6 +14,11 @@ const fmtDate = (d) => d ? new Date(d).toLocaleDateString('es-CR', { dateStyle: 
 function getPreset(preset) {
   const now = new Date(), y = now.getFullYear(), m = now.getMonth();
   switch (preset) {
+    case 'today_yesterday': {
+      const today = now.toISOString().slice(0,10);
+      const yest  = new Date(now - 86400000).toISOString().slice(0,10);
+      return { dateFrom: yest, dateTo: today };
+    }
     case 'this_month': return { dateFrom: new Date(y,m,1).toISOString().slice(0,10), dateTo: new Date(y,m+1,0).toISOString().slice(0,10) };
     case 'last_month': return { dateFrom: new Date(y,m-1,1).toISOString().slice(0,10), dateTo: new Date(y,m,0).toISOString().slice(0,10) };
     case 'this_year':  return { dateFrom: `${y}-01-01`, dateTo: `${y}-12-31` };
@@ -24,7 +29,7 @@ function getPreset(preset) {
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────
 function Skeleton({ className = '' }) {
-  return <div className={`animate-pulse bg-concrete-200 rounded ${className}`} />;
+  return <div className={`animate-pulse bg-concrete-200 dark:bg-steel-700 rounded ${className}`} />;
 }
 
 // ─── KPI Card (small, for tabs) ────────────────────────────────────────────
@@ -34,16 +39,16 @@ function KpiCard({ label, value, sub, color = 'primary' }) {
     blue: 'border-blue-400', amber: 'border-amber-400', red: 'border-red-400',
   };
   return (
-    <div className={`bg-white rounded-xl border-l-4 ${colors[color]} shadow-steel px-4 py-3`}>
-      <div className="text-xs text-steel-400 uppercase tracking-wide font-semibold mb-1 leading-tight">{label}</div>
-      <div className="text-xl font-black text-steel-900 leading-tight truncate">{value}</div>
-      {sub && <div className="text-xs text-steel-500 mt-0.5">{sub}</div>}
+    <div className={`bg-white dark:bg-steel-800 rounded-xl border-l-4 ${colors[color]} shadow-steel px-4 py-3`}>
+      <div className="text-xs text-steel-400 dark:text-steel-400 uppercase tracking-wide font-semibold mb-1 leading-tight">{label}</div>
+      <div className="text-xl font-black text-steel-900 dark:text-white leading-tight truncate">{value}</div>
+      {sub && <div className="text-xs text-steel-500 dark:text-steel-400 mt-0.5">{sub}</div>}
     </div>
   );
 }
 
 function SectionTitle({ children }) {
-  return <h2 className="text-sm font-bold text-steel-500 uppercase tracking-widest mb-3">{children}</h2>;
+  return <h2 className="text-sm font-bold text-steel-500 dark:text-steel-400 uppercase tracking-widest mb-3">{children}</h2>;
 }
 
 // ─── TAB: Overview ────────────────────────────────────────────────────────
@@ -79,15 +84,15 @@ function OverviewTab({ params }) {
         const borderColor = s.color === 'blue' ? 'border-l-blue-400' : s.color === 'green' ? 'border-l-green-400' : s.color === 'amber' ? 'border-l-amber-400' : s.color === 'red' ? 'border-l-red-400' : 'border-l-primary-400';
         const iconStyle = s.color === 'blue' ? 'bg-blue-50 text-blue-500' : s.color === 'green' ? 'bg-green-50 text-green-500' : s.color === 'amber' ? 'bg-amber-50 text-amber-500' : s.color === 'red' ? 'bg-red-50 text-red-500' : 'bg-primary-50 text-primary-500';
         return (
-          <div key={i} className={`bg-white rounded-2xl shadow-steel overflow-hidden border-l-4 ${borderColor}`}>
+          <div key={i} className={`bg-white dark:bg-steel-800 rounded-2xl shadow-steel overflow-hidden border-l-4 ${borderColor}`}>
             <div className="flex items-center gap-4 px-5 py-5">
               <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 text-2xl ${iconStyle}`}>
                 {s.icon}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-xs text-steel-400 uppercase tracking-widest font-semibold mb-0.5">{s.label}</div>
-                <div className="text-2xl sm:text-3xl font-black text-steel-900 leading-none">{s.value}</div>
-                <div className="text-xs text-steel-500 mt-1">{s.sub}</div>
+                <div className="text-2xl sm:text-3xl font-black text-steel-900 dark:text-white leading-none">{s.value}</div>
+                <div className="text-xs text-steel-500 dark:text-steel-400 mt-1">{s.sub}</div>
               </div>
             </div>
           </div>
@@ -97,28 +102,186 @@ function OverviewTab({ params }) {
   );
 }
 
+// ─── External Payment Modal ───────────────────────────────────────────────
+function ExternalPaymentModal({ onClose, onSaved }) {
+  const { t } = useLanguage();
+  const [name, setName]           = useState('');
+  const [amount, setAmount]       = useState('');
+  const [isAuto, setIsAuto]       = useState(false);
+  const [dayOfMonth, setDay]      = useState(1);
+  const [hour, setHour]           = useState(8);
+  const [saving, setSaving]       = useState(false);
+
+  const valid = name.trim() && Number(amount) > 0;
+
+  const handleSave = async () => {
+    if (!valid) return;
+    setSaving(true);
+    try {
+      await paymentsApi.create({
+        name: name.trim(),
+        amount: Number(amount),
+        isRecurring: isAuto,
+        schedule: isAuto ? { dayOfMonth: Number(dayOfMonth), hour: Number(hour), minute: 0 } : undefined,
+      });
+      toast.success('Pago externo guardado');
+      onSaved();
+      onClose();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const inputCls = 'w-full border border-concrete-200 dark:border-steel-600 rounded-lg px-3 py-2 text-sm text-steel-800 dark:text-steel-100 bg-white dark:bg-steel-700 focus:outline-none focus:ring-2 focus:ring-primary-400';
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
+      onClick={onClose}>
+      <div className="bg-white dark:bg-steel-800 rounded-t-2xl sm:rounded-2xl shadow-steel-lg w-full sm:max-w-sm"
+        onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-concrete-100 dark:border-steel-700">
+          <h3 className="font-bold text-steel-900 dark:text-white">{t('ext_pay_add')}</h3>
+          <button onClick={onClose} className="text-steel-400 hover:text-steel-700 dark:hover:text-white transition-colors">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="px-5 py-4 space-y-4">
+          {/* Name */}
+          <div>
+            <label className="block text-xs text-steel-400 dark:text-steel-400 uppercase tracking-wide font-semibold mb-1">{t('ext_pay_name')}</label>
+            <input className={inputCls} placeholder="Ej: Alquiler de equipo" value={name}
+              onChange={e => setName(e.target.value)} />
+          </div>
+
+          {/* Amount */}
+          <div>
+            <label className="block text-xs text-steel-400 dark:text-steel-400 uppercase tracking-wide font-semibold mb-1">{t('ext_pay_amount')}</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-steel-400 text-sm font-semibold">$</span>
+              <input className={`${inputCls} pl-7`} type="number" min="0" step="0.01"
+                placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)} />
+            </div>
+          </div>
+
+          {/* Auto switch */}
+          <div className="flex items-center justify-between py-1">
+            <div>
+              <div className="text-sm font-semibold text-steel-800 dark:text-steel-100">{t('ext_pay_auto')}</div>
+              <div className="text-xs text-steel-400 dark:text-steel-500 mt-0.5">{t('ext_pay_auto_hint')}</div>
+            </div>
+            <button
+              onClick={() => setIsAuto(a => !a)}
+              className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${isAuto ? 'bg-primary-500' : 'bg-steel-200 dark:bg-steel-600'}`}
+            >
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${isAuto ? 'translate-x-5' : ''}`} />
+            </button>
+          </div>
+
+          {/* Schedule — visible only when auto is on */}
+          {isAuto && (
+            <div className="bg-concrete-50 dark:bg-steel-700/50 rounded-xl p-4 space-y-3 border border-concrete-200 dark:border-steel-600">
+              <div className="text-xs text-steel-400 uppercase tracking-wide font-semibold">Horario automático</div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-steel-500 dark:text-steel-400 mb-1">{t('ext_pay_day')}</label>
+                  <select className={inputCls} value={dayOfMonth} onChange={e => setDay(e.target.value)}>
+                    {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                      <option key={d} value={d}>Día {d}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-steel-500 dark:text-steel-400 mb-1">{t('ext_pay_time')}</label>
+                  <select className={inputCls} value={hour} onChange={e => setHour(e.target.value)}>
+                    {Array.from({ length: 24 }, (_, i) => i).map(h => (
+                      <option key={h} value={h}>{String(h).padStart(2,'0')}:00</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-5 pb-5 flex gap-2">
+          <button onClick={onClose}
+            className="flex-1 px-4 py-2.5 rounded-xl border border-concrete-200 dark:border-steel-600 text-sm font-semibold text-steel-600 dark:text-steel-300 hover:bg-concrete-50 dark:hover:bg-steel-700 transition-colors">
+            {t('ext_pay_cancel')}
+          </button>
+          <button onClick={handleSave} disabled={!valid || saving}
+            className="flex-1 px-4 py-2.5 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold transition-colors disabled:opacity-40">
+            {saving ? 'Guardando...' : t('ext_pay_save')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── TAB: Salary ──────────────────────────────────────────────────────────
 function SalaryTab({ params }) {
   const { t } = useLanguage();
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [expanded, setExpanded] = useState(null);
+  const [data, setData]           = useState(null);
+  const [loading, setLoading]     = useState(true);
+  const [expanded, setExpanded]   = useState(null);
+  const [extPayments, setExtPayments] = useState([]);
+  const [showModal, setShowModal] = useState(false);
 
-  useEffect(() => {
+  const fetchSalary = () => {
     setLoading(true);
     reportsApi.salary(params).then(setData).catch(e => toast.error(e.message)).finally(() => setLoading(false));
-  }, [JSON.stringify(params)]);
+  };
+  const fetchExtPayments = () => {
+    paymentsApi.list().then(setExtPayments).catch(() => {});
+  };
+
+  useEffect(() => { fetchSalary(); }, [JSON.stringify(params)]);
+  useEffect(() => { fetchExtPayments(); }, []);
+
+  const deleteExtPayment = async (id) => {
+    try {
+      await paymentsApi.delete(id);
+      toast.success('Pago eliminado');
+      fetchExtPayments();
+    } catch (err) { toast.error(err.message); }
+  };
+
+  const extTotal = extPayments.reduce((s, p) => s + p.amount, 0);
 
   if (loading) return <div className="space-y-3">{Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-16" />)}</div>;
   if (!data) return null;
 
   return (
     <div className="space-y-4">
+      {showModal && (
+        <ExternalPaymentModal
+          onClose={() => setShowModal(false)}
+          onSaved={fetchExtPayments}
+        />
+      )}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <SectionTitle>{t('salary_title')}</SectionTitle>
-        <div className="text-right">
-          <div className="text-xs text-steel-400 uppercase">{t('salary_total')}</div>
-          <div className="text-xl font-black text-steel-900">{fmt(data.grandTotal)}</div>
+        <div className="flex items-center gap-3">
+          <div className="text-right">
+            <div className="text-xs text-steel-400 uppercase">{t('salary_total')}</div>
+            <div className="text-xl font-black text-steel-900 dark:text-white">{fmt(data.grandTotal + extTotal)}</div>
+          </div>
+          <button
+            onClick={() => setShowModal(true)}
+            className="flex items-center gap-1.5 px-3 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-xl text-xs font-semibold transition-colors shadow-steel"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+            </svg>
+            {t('ext_pay_add')}
+          </button>
         </div>
       </div>
 
@@ -127,9 +290,9 @@ function SalaryTab({ params }) {
       ) : (
         <div className="space-y-2">
           {data.results.map((r, i) => (
-            <div key={i} className="bg-white rounded-xl border border-concrete-200 shadow-steel overflow-hidden">
+            <div key={i} className="bg-white dark:bg-steel-800 rounded-xl border border-concrete-200 dark:border-steel-700 shadow-steel overflow-hidden">
               <button
-                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-concrete-50 transition-colors text-left"
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-concrete-50 dark:hover:bg-steel-700 transition-colors text-left"
                 onClick={() => setExpanded(expanded === i ? null : i)}
               >
                 <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
@@ -153,7 +316,7 @@ function SalaryTab({ params }) {
                 <div className="border-t border-concrete-100 overflow-x-auto">
                   <table className="w-full text-sm min-w-[400px]">
                     <thead>
-                      <tr className="text-xs text-steel-400 uppercase tracking-wide bg-concrete-50">
+                      <tr className="text-xs text-steel-400 uppercase tracking-wide bg-concrete-50 dark:bg-steel-900">
                         <th className="text-left px-4 py-2 font-semibold">{t('col_invoice')}</th>
                         <th className="text-left px-4 py-2 font-semibold hidden sm:table-cell">{t('col_client')}</th>
                         <th className="text-left px-4 py-2 font-semibold">{t('col_date')}</th>
@@ -161,10 +324,10 @@ function SalaryTab({ params }) {
                         <th className="text-right px-4 py-2 font-semibold">{t('col_pay')}</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-concrete-100">
+                    <tbody className="divide-y divide-concrete-100 dark:divide-steel-700">
                       {r.breakdown.map((b, j) => (
-                        <tr key={j} className="hover:bg-concrete-50">
-                          <td className="px-4 py-2 font-mono text-steel-700">#{b.docNumber}</td>
+                        <tr key={j} className="hover:bg-concrete-50 dark:hover:bg-steel-700">
+                          <td className="px-4 py-2 font-mono text-steel-700 dark:text-steel-300">#{b.docNumber}</td>
                           <td className="px-4 py-2 text-steel-600 truncate max-w-[160px] hidden sm:table-cell">{b.customerName}</td>
                           <td className="px-4 py-2 text-steel-500 whitespace-nowrap">{fmtDate(b.txnDate)}</td>
                           <td className="px-4 py-2 text-right text-steel-700">{fmtNum(b.monoSlabQty)}</td>
@@ -177,6 +340,42 @@ function SalaryTab({ params }) {
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* ── External payments ── */}
+      {extPayments.length > 0 && (
+        <div className="space-y-2">
+          <SectionTitle>{t('ext_pay_title')}</SectionTitle>
+          {extPayments.map(ep => (
+            <div key={ep._id} className="bg-white dark:bg-steel-800 rounded-xl border border-concrete-200 dark:border-steel-700 shadow-steel flex items-center gap-3 px-4 py-3">
+              <div className="w-9 h-9 rounded-full bg-steel-100 dark:bg-steel-700 flex items-center justify-center flex-shrink-0">
+                <svg className="w-4 h-4 text-steel-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-steel-900 dark:text-white truncate">{ep.name}</div>
+                {ep.isRecurring && (
+                  <div className="text-xs text-primary-500 mt-0.5">
+                    Automático · día {ep.schedule?.dayOfMonth} a las {String(ep.schedule?.hour).padStart(2,'0')}:00
+                  </div>
+                )}
+              </div>
+              <div className="text-lg font-black text-steel-900 dark:text-white flex-shrink-0">{fmt(ep.amount)}</div>
+              <button onClick={() => deleteExtPayment(ep._id)}
+                className="p-1.5 text-steel-300 hover:text-red-500 transition-colors flex-shrink-0">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            </div>
+          ))}
+          <div className="flex justify-end pt-1">
+            <div className="text-xs text-steel-400 uppercase tracking-wide">
+              Subtotal externo: <span className="font-bold text-steel-700 dark:text-steel-200">{fmt(extTotal)}</span>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -209,18 +408,18 @@ function ReceivablesTab({ params }) {
       {data.customers.length === 0 ? (
         <div className="text-center py-12 text-steel-400">{t('receivables_empty')}</div>
       ) : (
-        <div className="bg-white rounded-xl border border-concrete-200 shadow-steel overflow-x-auto">
+        <div className="bg-white dark:bg-steel-800 rounded-xl border border-concrete-200 dark:border-steel-700 shadow-steel overflow-x-auto">
           <table className="w-full text-sm min-w-[320px]">
-            <thead className="bg-concrete-50 border-b border-concrete-200">
+            <thead className="bg-concrete-50 dark:bg-steel-900 border-b border-concrete-200 dark:border-steel-700">
               <tr className="text-xs text-steel-400 uppercase tracking-wide">
                 <th className="text-left px-4 py-3 font-semibold">{t('col_client')}</th>
                 <th className="text-right px-4 py-3 font-semibold">{t('col_invoices')}</th>
                 <th className="text-right px-4 py-3 font-semibold">{t('col_balance')}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-concrete-100">
+            <tbody className="divide-y divide-concrete-100 dark:divide-steel-700">
               {data.customers.map((c, i) => (
-                <tr key={i} className="hover:bg-concrete-50">
+                <tr key={i} className="hover:bg-concrete-50 dark:hover:bg-steel-700">
                   <td className="px-4 py-3 font-medium text-steel-900 max-w-[200px] truncate">{c.customerName}</td>
                   <td className="px-4 py-3 text-right text-steel-500">{c.invoices.length}</td>
                   <td className="px-4 py-3 text-right font-bold text-amber-700">{fmt(c.totalBalance)}</td>
@@ -255,9 +454,9 @@ function RevenueTab({ params }) {
         <KpiCard label={t('kpi_paid')} value={fmt(data.totalPaid)} color="green" />
         <KpiCard label={t('kpi_receivable')} value={fmt(data.totalPending)} color="amber" />
       </div>
-      <div className="bg-white rounded-xl border border-concrete-200 shadow-steel overflow-x-auto">
+      <div className="bg-white dark:bg-steel-800 rounded-xl border border-concrete-200 dark:border-steel-700 shadow-steel overflow-x-auto">
         <table className="w-full text-sm min-w-[400px]">
-          <thead className="bg-concrete-50 border-b border-concrete-200">
+          <thead className="bg-concrete-50 dark:bg-steel-900 border-b border-concrete-200 dark:border-steel-700">
             <tr className="text-xs text-steel-400 uppercase tracking-wide">
               <th className="text-left px-4 py-3 font-semibold">Mes</th>
               <th className="text-right px-4 py-3 font-semibold">{t('col_invoices')}</th>
@@ -266,9 +465,9 @@ function RevenueTab({ params }) {
               <th className="text-right px-4 py-3 font-semibold">{t('kpi_receivable')}</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-concrete-100">
+          <tbody className="divide-y divide-concrete-100 dark:divide-steel-700">
             {data.monthly.map((m, i) => (
-              <tr key={i} className="hover:bg-concrete-50">
+              <tr key={i} className="hover:bg-concrete-50 dark:hover:bg-steel-700">
                 <td className="px-4 py-3 font-medium text-steel-900">{m.month}</td>
                 <td className="px-4 py-3 text-right text-steel-500">{m.count}</td>
                 <td className="px-4 py-3 text-right text-steel-900">{fmt(m.invoiced)}</td>
@@ -305,9 +504,9 @@ function MarginTab({ params }) {
         <KpiCard label={t('kpi_gross_margin')} value={fmt(data.grossMargin)} color="green" />
         <KpiCard label={t('kpi_margin_pct')} value={fmtPct(data.marginPct)} color="primary" />
       </div>
-      <div className="bg-white rounded-xl border border-concrete-200 shadow-steel overflow-x-auto">
+      <div className="bg-white dark:bg-steel-800 rounded-xl border border-concrete-200 dark:border-steel-700 shadow-steel overflow-x-auto">
         <table className="w-full text-sm min-w-[480px]">
-          <thead className="bg-concrete-50 border-b border-concrete-200">
+          <thead className="bg-concrete-50 dark:bg-steel-900 border-b border-concrete-200 dark:border-steel-700">
             <tr className="text-xs text-steel-400 uppercase tracking-wide">
               <th className="text-left px-4 py-3 font-semibold">{t('col_client')}</th>
               <th className="text-right px-4 py-3 font-semibold hidden sm:table-cell">{t('col_m2')}</th>
@@ -317,9 +516,9 @@ function MarginTab({ params }) {
               <th className="text-right px-4 py-3 font-semibold">%</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-concrete-100">
+          <tbody className="divide-y divide-concrete-100 dark:divide-steel-700">
             {data.customers.map((c, i) => (
-              <tr key={i} className="hover:bg-concrete-50">
+              <tr key={i} className="hover:bg-concrete-50 dark:hover:bg-steel-700">
                 <td className="px-4 py-3 font-medium text-steel-900 truncate max-w-[160px]">{c.customerName}</td>
                 <td className="px-4 py-3 text-right text-steel-500 hidden sm:table-cell">{fmtNum(c.m2)}</td>
                 <td className="px-4 py-3 text-right text-steel-900">{fmt(c.revenue)}</td>
@@ -517,7 +716,7 @@ function ExportFAB({ params }) {
           disabled={loading}
           className={`w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-all ${
             loading ? 'bg-steel-400 cursor-not-allowed' :
-            open ? 'bg-steel-700 rotate-45' : 'bg-primary-500 hover:bg-primary-600 active:scale-95'
+            open ? 'bg-steel-700' : 'bg-primary-500 hover:bg-primary-600 active:scale-95'
           }`}
         >
           {loading ? (
@@ -525,9 +724,13 @@ function ExportFAB({ params }) {
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
             </svg>
+          ) : open ? (
+            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+            </svg>
           ) : (
-            <svg className={`w-6 h-6 text-white transition-transform ${open ? 'rotate-45' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
           )}
         </button>
@@ -546,6 +749,7 @@ const TABS_DEF = [
 ];
 
 const PRESETS_DEF = [
+  { id: 'today_yesterday', key: 'preset_today_yesterday' },
   { id: 'this_month', key: 'preset_this_month' },
   { id: 'last_month', key: 'preset_last_month' },
   { id: 'last_90',    key: 'preset_last_90' },
@@ -587,7 +791,7 @@ function ReportsPage() {
 
       {/* ── Header ── */}
       <div className="space-y-2">
-        <h1 className="text-2xl font-bold text-steel-900">Reportes</h1>
+        <h1 className="text-2xl font-bold text-steel-900 dark:text-white">Reportes</h1>
 
         {/* Period presets */}
         <div className="flex flex-wrap items-center gap-1.5">
@@ -595,8 +799,8 @@ function ReportsPage() {
             <button key={p.id} onClick={() => setPreset(p.id)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                 preset === p.id
-                  ? 'bg-steel-900 text-white'
-                  : 'bg-white border border-concrete-200 text-steel-600 hover:border-steel-400'
+                  ? 'bg-steel-900 dark:bg-primary-600 text-white'
+                  : 'bg-white dark:bg-steel-800 border border-concrete-200 dark:border-steel-700 text-steel-600 dark:text-steel-300 hover:border-steel-400 dark:hover:border-steel-500'
               }`}>
               {t(p.key)}
             </button>
@@ -607,24 +811,24 @@ function ReportsPage() {
         <div className="flex items-center gap-1.5">
           <input type="date" value={dateFrom}
             onChange={e => { setDateFrom(e.target.value); setPreset('custom'); }}
-            className="text-xs border border-concrete-200 rounded-lg px-2 py-1.5 text-steel-700 focus:outline-none focus:ring-2 focus:ring-primary-400 flex-1 min-w-0"
+            className="text-xs border border-concrete-200 dark:border-steel-700 rounded-lg px-2 py-1.5 text-steel-700 dark:text-steel-200 bg-white dark:bg-steel-800 focus:outline-none focus:ring-2 focus:ring-primary-400 flex-1 min-w-0"
           />
           <span className="text-steel-400 text-xs flex-shrink-0">—</span>
           <input type="date" value={dateTo}
             onChange={e => { setDateTo(e.target.value); setPreset('custom'); }}
-            className="text-xs border border-concrete-200 rounded-lg px-2 py-1.5 text-steel-700 focus:outline-none focus:ring-2 focus:ring-primary-400 flex-1 min-w-0"
+            className="text-xs border border-concrete-200 dark:border-steel-700 rounded-lg px-2 py-1.5 text-steel-700 dark:text-steel-200 bg-white dark:bg-steel-800 focus:outline-none focus:ring-2 focus:ring-primary-400 flex-1 min-w-0"
           />
         </div>
       </div>
 
       {/* ── Tabs ── */}
-      <div className="flex gap-0.5 border-b border-concrete-200 overflow-x-auto">
+      <div className="flex gap-0.5 border-b border-concrete-200 dark:border-steel-700 overflow-x-auto">
         {TABS_DEF.map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)}
             className={`px-4 py-2.5 text-sm font-semibold whitespace-nowrap border-b-2 transition-colors -mb-px ${
               activeTab === tab.id
-                ? 'border-primary-500 text-primary-600'
-                : 'border-transparent text-steel-500 hover:text-steel-800'
+                ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                : 'border-transparent text-steel-500 dark:text-steel-400 hover:text-steel-800 dark:hover:text-white'
             }`}>
             {t(tab.key)}
           </button>

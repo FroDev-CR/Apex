@@ -17,7 +17,22 @@ body {
     linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
     linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px);
   background-size: 32px 32px;
+  transition: background-color 0.2s;
 }
+
+/* ── Dark mode body ── */
+.dark body {
+  background-color: #0c121c;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+/* Scrollbar dark */
+.dark ::-webkit-scrollbar-track { background: #1c2738; }
+.dark ::-webkit-scrollbar-thumb { background: #3d4a58; }
+.dark ::-webkit-scrollbar-thumb:hover { background: #526070; }
 
 /* Scrollbar estilo acero */
 ::-webkit-scrollbar { width: 6px; height: 6px; }

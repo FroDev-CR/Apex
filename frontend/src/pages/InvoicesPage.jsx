@@ -49,14 +49,14 @@ function InvoiceModal({ invoice, collaborators, onClose, onCollaboratorChange })
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-steel-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+      <div className="bg-white dark:bg-steel-800 rounded-2xl shadow-steel-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}>
 
         {/* Header */}
-        <div className="flex items-start justify-between px-6 py-5 border-b border-concrete-100">
+        <div className="flex items-start justify-between px-6 py-5 border-b border-concrete-100 dark:border-steel-700">
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-xl font-black text-steel-900">Factura #{invoice.docNumber}</h2>
+              <h2 className="text-xl font-black text-steel-900 dark:text-white">Factura #{invoice.docNumber}</h2>
               {invoice.hasMonoSlab && <MonoSlabTag qty={invoice.monoSlabQty} />}
               {invoice.estado && <EstadoBadge estado={invoice.estado} />}
             </div>
@@ -113,7 +113,7 @@ function InvoiceModal({ invoice, collaborators, onClose, onCollaboratorChange })
             <div className="text-xs text-steel-400 uppercase tracking-wide font-semibold mb-2">Líneas de producto</div>
             <div className="border border-concrete-200 rounded-xl overflow-hidden">
               <table className="w-full text-sm">
-                <thead className="bg-concrete-50 border-b border-concrete-200">
+                <thead className="bg-concrete-50 dark:bg-steel-900 border-b border-concrete-200 dark:border-steel-700">
                   <tr className="text-xs text-steel-400 uppercase tracking-wide">
                     <th className="text-left px-3 py-2 font-semibold">Producto/Servicio</th>
                     <th className="text-right px-3 py-2 font-semibold">Qty</th>
@@ -229,7 +229,7 @@ function InvoicesPage() {
       {/* ── Header ── */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-steel-900">{t('nav_invoices')}</h1>
+          <h1 className="text-2xl font-bold text-steel-900 dark:text-white">{t('nav_invoices')}</h1>
           <p className="text-steel-500 text-sm mt-0.5">{pagination.total} {t('kpi_invoices').toLowerCase()}</p>
         </div>
 
@@ -261,7 +261,7 @@ function InvoicesPage() {
 
       {/* ── Collapsible filters ── */}
       {filtersOpen && (
-        <div className="bg-white border border-concrete-200 rounded-xl shadow-steel px-4 py-4 space-y-3">
+        <div className="bg-white dark:bg-steel-800 border border-concrete-200 dark:border-steel-700 rounded-xl shadow-steel px-4 py-4 space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {/* Customer search */}
             <div className="sm:col-span-2 lg:col-span-1">
@@ -340,7 +340,7 @@ function InvoicesPage() {
       )}
 
       {/* ── Table ── */}
-      <div className="bg-white rounded-xl border border-concrete-200 shadow-steel overflow-hidden">
+      <div className="bg-white dark:bg-steel-800 rounded-xl border border-concrete-200 dark:border-steel-700 shadow-steel overflow-hidden">
         {loading ? (
           <div className="p-8 text-center text-steel-400">
             <svg className="w-6 h-6 animate-spin mx-auto mb-2" fill="none" viewBox="0 0 24 24">
@@ -359,7 +359,7 @@ function InvoicesPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm min-w-[600px]">
-              <thead className="bg-concrete-50 border-b border-concrete-200">
+              <thead className="bg-concrete-50 dark:bg-steel-900 border-b border-concrete-200 dark:border-steel-700">
                 <tr className="text-xs text-steel-400 uppercase tracking-wide">
                   <th className="text-left px-4 py-3 font-semibold">#</th>
                   <th className="text-left px-4 py-3 font-semibold">{t('col_client')}</th>
@@ -376,7 +376,7 @@ function InvoicesPage() {
                   <tr
                     key={inv._id}
                     onClick={() => setSelectedInvoice(inv)}
-                    className="hover:bg-concrete-50 cursor-pointer transition-colors"
+                    className="hover:bg-concrete-50 dark:hover:bg-steel-700 cursor-pointer transition-colors"
                   >
                     <td className="px-4 py-3 font-mono text-steel-700 font-medium">#{inv.docNumber}</td>
                     <td className="px-4 py-3">

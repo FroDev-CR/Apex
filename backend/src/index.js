@@ -7,6 +7,8 @@ import { qboRoutes } from './routes/qbo.js';
 import { invoiceRoutes } from './routes/invoices.js';
 import { reportRoutes } from './routes/reports.js';
 import { collaboratorRoutes } from './routes/collaborators.js';
+import { paymentRoutes } from './routes/payments.js';
+import { startCronJobs } from './services/cronJobs.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -41,6 +43,7 @@ app.use('/api/qbo', qboRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/collaborators', collaboratorRoutes);
+app.use('/api/payments', paymentRoutes);
 
 app.use((err, req, res, next) => {
   console.error('❌ Error:', err.message);
@@ -61,6 +64,7 @@ async function startServer() {
       console.log(`🚀 Apex backend running on port ${PORT}`);
       console.log(`📡 API: http://localhost:${PORT}/api`);
       console.log(`🔗 Connect QBO: http://localhost:${PORT}/api/qbo/connect`);
+      startCronJobs();
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error.message);

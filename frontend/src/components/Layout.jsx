@@ -1,8 +1,10 @@
 import { NavLink } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
 
 function Layout({ children }) {
   const { t, lang, toggle } = useLanguage();
+  const { dark, toggleDark } = useTheme();
 
   const NAV_ITEMS = [
     {
@@ -25,8 +27,10 @@ function Layout({ children }) {
     },
   ];
 
+  const iconBtn = 'p-2 rounded transition-colors text-steel-300 hover:text-white hover:bg-steel-700';
+
   return (
-    <div className="min-h-screen flex flex-col bg-concrete-50">
+    <div className="min-h-screen flex flex-col bg-concrete-50 dark:bg-steel-950">
 
       {/* ── Header ── */}
       <header className="bg-steel-900 border-b-2 border-primary-600 shadow-lg flex-shrink-0 z-30">
@@ -64,20 +68,40 @@ function Layout({ children }) {
             </nav>
 
             {/* Right actions */}
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1">
 
               {/* Language toggle */}
               <button
                 onClick={toggle}
                 title={lang === 'es' ? 'Switch to English' : 'Cambiar a Español'}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded text-steel-300 hover:text-white hover:bg-steel-700 transition-colors text-xs font-bold uppercase tracking-wide"
+                className={`${iconBtn} flex items-center gap-1 px-2.5 text-xs font-bold uppercase tracking-wide`}
               >
-                {/* Translate icon */}
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                     d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
                 </svg>
                 <span className="hidden sm:inline">{lang === 'es' ? 'EN' : 'ES'}</span>
+              </button>
+
+              {/* Dark mode toggle */}
+              <button
+                onClick={toggleDark}
+                title={dark ? 'Modo claro' : 'Modo oscuro'}
+                className={iconBtn}
+              >
+                {dark ? (
+                  /* Sol */
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
+                  </svg>
+                ) : (
+                  /* Luna */
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                  </svg>
+                )}
               </button>
 
               {/* Settings gear */}
