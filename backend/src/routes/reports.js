@@ -200,6 +200,67 @@ reportRoutes.get('/margin', async (req, res) => {
   }
 });
 
+// ─── GET /api/reports/export ───────────────────────────────────────────────
+// Todos los datos del período para generar Excel/CSV en el frontend
+reportRoutes.get('/export', async (req, res) => {
+  try {
+    const { dateFrom, dateTo } = req.query;
+    const filter = dateFilter(dateFrom, dateTo);
+
+    const invoices = await Invoice.find(filter)
+      .populate('collaborator', 'name color')
+      .sort({ txnDate: -1 });
+
+    // ── Resumen general ──
+    const totalRevenue    = invoices.reduce((s, i) => s + i.totalAmount, 0);
+    const totalReceivable = invoices.reduce((s, i) => s + i.balance, 0);
+    const totalCollabCost = invoices.reduce((s, i) => s + (i.collaboratorPay || 0), 0);
+    const totalM2         = invoices.reduce((s, i) => s + (i.monoSlabQty || 0), 0);
+    const grossMargin     = totalRevenue - totalCollabCost;
+
+    // ── Facturas detalladas ──
+    const invoiceRows = invoices.map(inv => ({
+      fecha:        inv.txnDate ? new Date(inv.txnDate).toLocaleDateString('es-CR') : '',
+      factura:      inv.docNumber,
+      cliente:      inv.customerName,
+      empresa:      inv.billingCompany || inv.customerName,
+      estado:       inv.estado || '',
+      totalFacturado: inv.totalAmount,
+      saldoPendiente: inv.balance,
+      pagado:       inv.totalAmount - inv.balance,
+      esMonoSlab:   inv.hasMonoSlab ? 'Sí' : 'No',
+      m2:           inv.monoSlabQty || 0,
+      pagoCollab:   inv.collaboratorPay || 0,
+      colaborador:  inv.collaborator?.name || 'Sin asignar',
+    }));
+
+    // ── Salarios por colaborador ──
+    const bySalary = new Map();
+    for (const inv of invoices) {
+      if (!inv.hasMonoSlab) continue;
+      const key   = inv.collaborator?._id?.toString() || '__unassigned__';
+      const name  = inv.collaborator?.name || 'Sin asignar';
+      if (!bySalary.has(key)) bySalary.set(key, { colaborador: name, m2: 0, total: 0, facturas: 0 });
+      const g = bySalary.get(key);
+      g.m2       += inv.monoSlabQty || 0;
+      g.total    += inv.collaboratorPay || 0;
+      g.facturas += 1;
+    }
+    const salaryRows = Array.from(bySalary.values())
+      .sort((a, b) => b.total - a.total);
+
+    res.json({
+      period: { dateFrom, dateTo },
+      resumen: { totalRevenue, totalReceivable, totalCollabCost, totalM2, grossMargin,
+                 invoiceCount: invoices.length, marginPct: totalRevenue > 0 ? (grossMargin / totalRevenue) * 100 : 0 },
+      invoices: invoiceRows,
+      salaries: salaryRows,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── GET /api/reports/overview ─────────────────────────────────────────────
 // Dashboard overview: key numbers at a glance
 reportRoutes.get('/overview', async (req, res) => {

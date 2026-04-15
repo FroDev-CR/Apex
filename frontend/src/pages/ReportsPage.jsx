@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
+import * as XLSX from 'xlsx';
 import { reportsApi } from '../api';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
@@ -343,6 +344,131 @@ function MarginTab({ params }) {
   );
 }
 
+// ─── Export helpers ────────────────────────────────────────────────────────
+function buildWorkbook(data) {
+  const wb = XLSX.utils.book_new();
+
+  // Hoja 1: Resumen
+  const r = data.resumen;
+  const resumenRows = [
+    ['REPORTE APEX CONCRETE', ''],
+    ['Período', `${data.period.dateFrom || 'Inicio'} — ${data.period.dateTo || 'Hoy'}`],
+    [''],
+    ['RESUMEN GENERAL', ''],
+    ['Total Facturado',   r.totalRevenue],
+    ['Por Cobrar',        r.totalReceivable],
+    ['Total Cobrado',     r.totalRevenue - r.totalReceivable],
+    ['Costo Collaboradores', r.totalCollabCost],
+    ['Margen Bruto',     r.grossMargin],
+    ['% Margen',         `${r.marginPct?.toFixed(1)}%`],
+    ['Total M²',         r.totalM2],
+    ['Total Facturas',   r.invoiceCount],
+  ];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(resumenRows), 'Resumen');
+
+  // Hoja 2: Facturas
+  const invHeaders = ['Fecha','Factura #','Cliente','Empresa','Estado','Total Facturado','Saldo Pendiente','Cobrado','Mono Slab','M²','Pago Collab','Colaborador'];
+  const invRows = data.invoices.map(i => [
+    i.fecha, i.factura, i.cliente, i.empresa, i.estado,
+    i.totalFacturado, i.saldoPendiente, i.pagado,
+    i.esMonoSlab, i.m2, i.pagoCollab, i.colaborador
+  ]);
+  const wsInv = XLSX.utils.aoa_to_sheet([invHeaders, ...invRows]);
+  // Anchos de columna
+  wsInv['!cols'] = [12,10,30,20,15,15,15,15,10,10,12,15].map(w => ({ wch: w }));
+  XLSX.utils.book_append_sheet(wb, wsInv, 'Facturas');
+
+  // Hoja 3: Salarios
+  const salHeaders = ['Colaborador','M²','Total a Pagar','# Facturas'];
+  const salRows = data.salaries.map(s => [s.colaborador, s.m2, s.total, s.facturas]);
+  const wsSal = XLSX.utils.aoa_to_sheet([salHeaders, ...salRows]);
+  wsSal['!cols'] = [20,12,15,12].map(w => ({ wch: w }));
+  XLSX.utils.book_append_sheet(wb, wsSal, 'Salarios');
+
+  return wb;
+}
+
+function downloadCSV(data) {
+  const rows = [
+    ['REPORTE APEX CONCRETE'],
+    [`Período: ${data.period.dateFrom || 'Inicio'} — ${data.period.dateTo || 'Hoy'}`],
+    [],
+    ['=== RESUMEN ==='],
+    ['Total Facturado', data.resumen.totalRevenue],
+    ['Por Cobrar', data.resumen.totalReceivable],
+    ['Costo Collabs', data.resumen.totalCollabCost],
+    ['Margen Bruto', data.resumen.grossMargin],
+    ['% Margen', `${data.resumen.marginPct?.toFixed(1)}%`],
+    [],
+    ['=== SALARIOS ==='],
+    ['Colaborador', 'M²', 'Total a Pagar', '# Facturas'],
+    ...data.salaries.map(s => [s.colaborador, s.m2, s.total, s.facturas]),
+    [],
+    ['=== FACTURAS ==='],
+    ['Fecha','Factura #','Cliente','Estado','Total','Saldo','M²','Pago Collab','Colaborador'],
+    ...data.invoices.map(i => [i.fecha, i.factura, i.cliente, i.estado, i.totalFacturado, i.saldoPendiente, i.m2, i.pagoCollab, i.colaborador]),
+  ];
+
+  const csv = rows.map(r => r.map(v => `"${v ?? ''}"`).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `apex-reporte-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ─── Export button component ────────────────────────────────────────────────
+function ExportButtons({ params }) {
+  const [loading, setLoading] = useState(false);
+
+  const handleExport = async (format) => {
+    setLoading(true);
+    try {
+      const data = await reportsApi.export(params);
+      if (format === 'csv') {
+        downloadCSV(data);
+        toast.success('CSV descargado');
+      } else {
+        const wb = buildWorkbook(data);
+        XLSX.writeFile(wb, `apex-reporte-${new Date().toISOString().slice(0,10)}.xlsx`);
+        toast.success('Excel descargado');
+      }
+    } catch (err) {
+      toast.error('Error al exportar: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-xs text-steel-400 font-semibold uppercase tracking-wide">Exportar:</span>
+      <button
+        onClick={() => handleExport('xlsx')}
+        disabled={loading}
+        className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
+      >
+        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+        Excel
+      </button>
+      <button
+        onClick={() => handleExport('csv')}
+        disabled={loading}
+        className="flex items-center gap-1.5 px-3 py-1.5 bg-steel-600 hover:bg-steel-700 text-white rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
+      >
+        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+        CSV
+      </button>
+    </div>
+  );
+}
+
 // ─── Main page ─────────────────────────────────────────────────────────────
 const TABS = [
   { id: 'overview',     label: 'Resumen' },
@@ -398,6 +524,8 @@ function ReportsPage() {
           <h1 className="text-2xl font-bold text-steel-900">Reportes</h1>
           <p className="text-steel-500 text-sm mt-0.5">Análisis financiero de Apex Concrete</p>
         </div>
+
+        <ExportButtons params={params} />
 
         {/* Period filters */}
         <div className="flex items-center gap-2 flex-wrap">

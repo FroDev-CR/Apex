@@ -59,6 +59,10 @@ export const reportsApi = {
   margin: (params = {}) => {
     const query = new URLSearchParams(params).toString();
     return fetchApi(`/api/reports/margin${query ? `?${query}` : ''}`);
+  },
+  export: (params = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return fetchApi(`/api/reports/export${query ? `?${query}` : ''}`);
   }
 };
 
