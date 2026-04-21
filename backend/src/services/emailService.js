@@ -103,14 +103,14 @@ function buildExcel(data) {
   XLSX.utils.book_append_sheet(wb, wsR, 'Resumen');
 
   const wsSal = XLSX.utils.aoa_to_sheet([
-    [sx('Colaborador'), sx('M²'), sx('Total a Pagar'), sx('# Facturas')],
+    [sx('Colaborador'), sx('SF'), sx('Total a Pagar'), sx('# Facturas')],
     ...data.salaries.map(s => [sx(s.colaborador), m2c(s.m2), $x(s.total), m2c(s.facturas)]),
   ]);
   wsSal['!cols'] = [{ wch: 22 }, { wch: 12 }, { wch: 16 }, { wch: 12 }];
   XLSX.utils.book_append_sheet(wb, wsSal, 'Salarios');
 
   const wsInv = XLSX.utils.aoa_to_sheet([
-    [sx('Fecha'), sx('Factura #'), sx('Cliente'), sx('Estado'), sx('Total'), sx('Saldo'), sx('M²'), sx('Pago Collab'), sx('Colaborador')],
+    [sx('Fecha'), sx('Factura #'), sx('Cliente'), sx('Estado'), sx('Total'), sx('Saldo'), sx('SF'), sx('Pago Collab'), sx('Colaborador')],
     ...data.invoices.map(i => [
       sx(i.fecha), sx(i.factura), sx(i.cliente), sx(i.estado),
       $x(i.totalFacturado), $x(i.saldoPendiente), m2c(i.m2), $x(i.pagoCollab), sx(i.colaborador),

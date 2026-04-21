@@ -24,7 +24,7 @@ function MonoSlabTag({ qty }) {
   return (
     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-primary-50 text-primary-700 border border-primary-100">
       <span className="w-1.5 h-1.5 rounded-full bg-primary-500" />
-      {fmtNum(qty)} m²
+      {fmtNum(qty)} SF
     </span>
   );
 }

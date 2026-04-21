@@ -75,7 +75,7 @@ function OverviewTab({ params }) {
     { label: t('kpi_receivable'),   value: fmt(data.totalReceivable), sub: 'saldo pendiente', color: 'amber', icon: '⏳' },
     { label: t('kpi_collab_cost'),  value: fmt(data.totalCollabCost), sub: `${fmtNum(data.totalM2)} ${t('kpi_m2')}`, color: 'red', icon: '👷' },
     { label: t('kpi_gross_margin'), value: fmt(data.grossMargin),     sub: fmtPct(data.marginPct), color: 'green', icon: '📈' },
-    { label: t('kpi_margin_pct'),   value: fmtPct(data.marginPct),   sub: `${fmtNum(data.totalM2)} m² MONO SLAB`, color: 'primary', icon: '💹' },
+    { label: t('kpi_margin_pct'),   value: fmtPct(data.marginPct),   sub: `${fmtNum(data.totalM2)} SF MONO SLAB`, color: 'primary', icon: '💹' },
   ];
 
   return (
@@ -335,7 +335,7 @@ function SalaryTab({ params }) {
                   <div className="font-semibold text-steel-900 dark:text-white truncate">
                     {r.collaborator?.name || <span className="text-steel-400 italic">{t('unassigned')}</span>}
                   </div>
-                  <div className="text-xs text-steel-500 dark:text-steel-400">{fmtNum(r.totalM2)} m² · {r.invoiceCount} facturas</div>
+                  <div className="text-xs text-steel-500 dark:text-steel-400">{fmtNum(r.totalM2)} SF · {r.invoiceCount} facturas</div>
                 </div>
                 <div className="text-right flex-shrink-0 ml-2">
                   <div className="text-lg font-black text-steel-900 dark:text-white">{fmt(r.totalPay)}</div>
@@ -532,7 +532,7 @@ function MarginTab({ params }) {
     <div className="space-y-4">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <KpiCard label={t('kpi_invoiced')} value={fmt(data.totalRevenue)} color="blue" />
-        <KpiCard label={t('kpi_collab_cost')} value={fmt(data.totalCollabCost)} sub={`${fmtNum(data.totalM2)} m²`} color="red" />
+        <KpiCard label={t('kpi_collab_cost')} value={fmt(data.totalCollabCost)} sub={`${fmtNum(data.totalM2)} SF`} color="red" />
         <KpiCard label={t('kpi_gross_margin')} value={fmt(data.grossMargin)} color="green" />
         <KpiCard label={t('kpi_margin_pct')} value={fmtPct(data.marginPct)} color="primary" />
       </div>
@@ -588,7 +588,7 @@ function buildWorkbook(data) {
     [sx('Costo Collaboradores'), $x(r.totalCollabCost)],
     [sx('Margen Bruto'),         $x(r.grossMargin)],
     [sx('% Margen'),             pctx(r.marginPct)],
-    [sx('Total M²'),             m2c(r.totalM2)],
+    [sx('Total SF'),              m2c(r.totalM2)],
     [sx('Total Facturas'),       m2c(r.invoiceCount)],
   ]);
   wsR['!cols'] = [{ wch: 26 }, { wch: 16 }];
@@ -598,7 +598,7 @@ function buildWorkbook(data) {
     [sx('SALARIOS POR COLABORADOR'), sx(''), sx(''), sx('')],
     [sx('Período'), sx(per), sx(''), sx('')],
     [sx(''), sx(''), sx(''), sx('')],
-    [sx('Colaborador'), sx('M²'), sx('Total a Pagar'), sx('# Facturas')],
+    [sx('Colaborador'), sx('SF'), sx('Total a Pagar'), sx('# Facturas')],
     ...data.salaries.map(sal => [sx(sal.colaborador), m2c(sal.m2), $x(sal.total), m2c(sal.facturas)]),
     [sx(''), sx(''), sx(''), sx('')],
     [sx('TOTAL'), m2c(data.salaries.reduce((a,x)=>a+x.m2,0)), $x(data.salaries.reduce((a,x)=>a+x.total,0)), m2c(data.salaries.reduce((a,x)=>a+x.facturas,0))],
@@ -607,7 +607,7 @@ function buildWorkbook(data) {
   XLSX.utils.book_append_sheet(wb, wsSal, 'Salarios');
 
   const wsInv = XLSX.utils.aoa_to_sheet([
-    [sx('Fecha'), sx('Factura #'), sx('Cliente'), sx('Estado'), sx('Total Facturado'), sx('Saldo Pendiente'), sx('Cobrado'), sx('Mono Slab'), sx('M²'), sx('Pago Collab'), sx('Colaborador')],
+    [sx('Fecha'), sx('Factura #'), sx('Cliente'), sx('Estado'), sx('Total Facturado'), sx('Saldo Pendiente'), sx('Cobrado'), sx('Mono Slab'), sx('SF'), sx('Pago Collab'), sx('Colaborador')],
     ...data.invoices.map(i => [
       sx(i.fecha), sx(i.factura), sx(i.cliente), sx(i.estado),
       $x(i.totalFacturado), $x(i.saldoPendiente), $x(i.pagado),
@@ -677,12 +677,12 @@ tfoot tr{background:#1e293b;color:white;font-weight:900}
   <div class="kpi green"><div class="kpi-label">Margen Bruto</div><div class="kpi-value">${fU(r.grossMargin)}</div></div>
 </div>
 <div class="section"><div class="section-title">Salarios por Colaborador</div>
-<table class="sal-table"><thead><tr><th>Colaborador</th><th>M²</th><th>Total a Pagar</th><th># Facturas</th></tr></thead>
+<table class="sal-table"><thead><tr><th>Colaborador</th><th>SF</th><th>Total a Pagar</th><th># Facturas</th></tr></thead>
 <tbody>${salRows}</tbody>
 <tfoot><tr><td>TOTAL</td><td class="num">${fN(r.totalM2)}</td><td class="num">${fU(r.totalCollabCost)}</td><td class="num">${fN(data.salaries.reduce((a,x)=>a+x.facturas,0))}</td></tr></tfoot>
 </table></div>
 <div class="section"><div class="section-title">Detalle de Facturas (${r.invoiceCount})</div>
-<table><thead><tr><th>Fecha</th><th>Factura</th><th>Cliente</th><th>Estado</th><th>Total</th><th>Saldo</th><th>M²</th><th>Pago Collab</th><th>Colaborador</th></tr></thead>
+<table><thead><tr><th>Fecha</th><th>Factura</th><th>Cliente</th><th>Estado</th><th>Total</th><th>Saldo</th><th>SF</th><th>Pago Collab</th><th>Colaborador</th></tr></thead>
 <tbody>${invRows}</tbody></table></div>
 </body></html>`;
 
