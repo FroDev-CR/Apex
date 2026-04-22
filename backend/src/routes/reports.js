@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { Invoice } from '../models/Invoice.js';
 import { Collaborator } from '../models/Collaborator.js';
-import { calculatePeriodSalary } from '../salary/salaryRules.js';
+import { calculatePeriodSalary, getWorkTypes } from '../salary/salaryRules.js';
 
 export const reportRoutes = Router();
 
@@ -220,32 +220,46 @@ reportRoutes.get('/export', async (req, res) => {
     const grossMargin     = totalRevenue - totalCollabCost;
 
     // ── Facturas detalladas ──
-    const invoiceRows = invoices.map(inv => ({
-      fecha:        inv.txnDate ? new Date(inv.txnDate).toLocaleDateString('es-CR') : '',
-      factura:      inv.docNumber,
-      cliente:      inv.customerName,
-      empresa:      inv.billingCompany || inv.customerName,
-      estado:       inv.estado || '',
-      totalFacturado: inv.totalAmount,
-      saldoPendiente: inv.balance,
-      pagado:       inv.totalAmount - inv.balance,
-      esMonoSlab:   inv.hasMonoSlab ? 'Sí' : 'No',
-      m2:           inv.monoSlabQty || 0,
-      pagoCollab:   inv.collaboratorPay || 0,
-      colaborador:  inv.collaborator?.name || 'Sin asignar',
-    }));
+    // Phantoms (collaboratorPay <= 1) se muestran como facturas normales pero sin SF/pago
+    const invoiceRows = invoices.map(inv => {
+      const isPhantom = inv.hasMonoSlab && (inv.collaboratorPay || 0) <= 1;
+      return {
+        fecha:          inv.txnDate ? new Date(inv.txnDate).toLocaleDateString('es-CR') : '',
+        factura:        inv.docNumber,
+        cliente:        inv.customerName,
+        empresa:        inv.billingCompany || inv.customerName,
+        estado:         inv.estado || '',
+        totalFacturado: inv.totalAmount,
+        saldoPendiente: inv.balance,
+        pagado:         inv.totalAmount - inv.balance,
+        esMonoSlab:     (inv.hasMonoSlab && !isPhantom) ? 'Sí' : 'No',
+        m2:             isPhantom ? 0 : (inv.monoSlabQty || 0),
+        pagoCollab:     isPhantom ? 0 : (inv.collaboratorPay || 0),
+        colaborador:    inv.collaborator?.name || 'Sin asignar',
+        tarea:          isPhantom ? '' : (getWorkTypes(inv.lineItems || []).join(', ') || ''),
+      };
+    });
 
     // ── Salarios por colaborador ──
     const bySalary = new Map();
     for (const inv of invoices) {
       if (!inv.hasMonoSlab || (inv.collaboratorPay || 0) <= 1) continue;
-      const key   = inv.collaborator?._id?.toString() || '__unassigned__';
-      const name  = inv.collaborator?.name || 'Sin asignar';
-      if (!bySalary.has(key)) bySalary.set(key, { colaborador: name, m2: 0, total: 0, facturas: 0 });
+      const key  = inv.collaborator?._id?.toString() || '__unassigned__';
+      const name = inv.collaborator?.name || 'Sin asignar';
+      if (!bySalary.has(key)) bySalary.set(key, { colaborador: name, m2: 0, total: 0, facturas: 0, breakdown: [] });
       const g = bySalary.get(key);
+      const workTypes = getWorkTypes(inv.lineItems || []);
       g.m2       += inv.monoSlabQty || 0;
       g.total    += inv.collaboratorPay || 0;
       g.facturas += 1;
+      g.breakdown.push({
+        docNumber:    inv.docNumber,
+        customerName: inv.customerName,
+        fecha:        inv.txnDate ? new Date(inv.txnDate).toLocaleDateString('es-CR') : '',
+        m2:           inv.monoSlabQty || 0,
+        pay:          inv.collaboratorPay || 0,
+        tarea:        workTypes.join(', ') || '—',
+      });
     }
     const salaryRows = Array.from(bySalary.values())
       .sort((a, b) => b.total - a.total);

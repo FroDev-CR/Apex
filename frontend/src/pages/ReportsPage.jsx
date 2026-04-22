@@ -594,33 +594,39 @@ function buildWorkbook(data) {
     [sx('Costo Collaboradores'), $x(r.totalCollabCost)],
     [sx('Margen Bruto'),         $x(r.grossMargin)],
     [sx('% Margen'),             pctx(r.marginPct)],
-    [sx('Total SF'),              m2c(r.totalM2)],
+    [sx('Total SF'),             m2c(r.totalM2)],
     [sx('Total Facturas'),       m2c(r.invoiceCount)],
   ]);
   wsR['!cols'] = [{ wch: 26 }, { wch: 16 }];
   XLSX.utils.book_append_sheet(wb, wsR, 'Resumen');
 
-  const wsSal = XLSX.utils.aoa_to_sheet([
-    [sx('SALARIOS POR COLABORADOR'), sx(''), sx(''), sx('')],
-    [sx('Período'), sx(per), sx(''), sx('')],
-    [sx(''), sx(''), sx(''), sx('')],
-    [sx('Colaborador'), sx('SF'), sx('Total a Pagar'), sx('# Facturas')],
-    ...data.salaries.map(sal => [sx(sal.colaborador), m2c(sal.m2), $x(sal.total), m2c(sal.facturas)]),
-    [sx(''), sx(''), sx(''), sx('')],
-    [sx('TOTAL'), m2c(data.salaries.reduce((a,x)=>a+x.m2,0)), $x(data.salaries.reduce((a,x)=>a+x.total,0)), m2c(data.salaries.reduce((a,x)=>a+x.facturas,0))],
-  ]);
-  wsSal['!cols'] = [{ wch: 22 }, { wch: 12 }, { wch: 16 }, { wch: 12 }];
+  // Salary summary + breakdown per collaborator
+  const salRows = [];
+  salRows.push([sx('SALARIOS POR COLABORADOR'), sx(''), sx(''), sx(''), sx(''), sx('')]);
+  salRows.push([sx('Período'), sx(per), sx(''), sx(''), sx(''), sx('')]);
+  salRows.push([sx(''), sx(''), sx(''), sx(''), sx(''), sx('')]);
+  for (const sal of data.salaries) {
+    salRows.push([sx(sal.colaborador), m2c(sal.m2), $x(sal.total), m2c(sal.facturas), sx(''), sx('')]);
+    salRows.push([sx('  Factura'), sx('  Cliente'), sx('  Tarea'), sx('  SF'), sx('  Pago'), sx('')]);
+    for (const b of (sal.breakdown || [])) {
+      salRows.push([sx(`  #${b.docNumber}`), sx(`  ${b.customerName}`), sx(`  ${b.tarea}`), m2c(b.m2), $x(b.pay), sx('')]);
+    }
+    salRows.push([sx(''), sx(''), sx(''), sx(''), sx(''), sx('')]);
+  }
+  salRows.push([sx('TOTAL'), m2c(data.salaries.reduce((a,x)=>a+x.m2,0)), $x(data.salaries.reduce((a,x)=>a+x.total,0)), m2c(data.salaries.reduce((a,x)=>a+x.facturas,0)), sx(''), sx('')]);
+  const wsSal = XLSX.utils.aoa_to_sheet(salRows);
+  wsSal['!cols'] = [{ wch: 22 }, { wch: 32 }, { wch: 20 }, { wch: 12 }, { wch: 14 }, { wch: 4 }];
   XLSX.utils.book_append_sheet(wb, wsSal, 'Salarios');
 
   const wsInv = XLSX.utils.aoa_to_sheet([
-    [sx('Fecha'), sx('Factura #'), sx('Cliente'), sx('Estado'), sx('Total Facturado'), sx('Saldo Pendiente'), sx('Cobrado'), sx('Mono Slab'), sx('SF'), sx('Pago Collab'), sx('Colaborador')],
+    [sx('Fecha'), sx('Factura #'), sx('Cliente'), sx('Estado'), sx('Total Facturado'), sx('Saldo Pendiente'), sx('Cobrado'), sx('Tarea'), sx('SF'), sx('Pago Collab'), sx('Colaborador')],
     ...data.invoices.map(i => [
       sx(i.fecha), sx(i.factura), sx(i.cliente), sx(i.estado),
       $x(i.totalFacturado), $x(i.saldoPendiente), $x(i.pagado),
-      sx(i.esMonoSlab), m2c(i.m2), $x(i.pagoCollab), sx(i.colaborador)
+      sx(i.tarea || ''), m2c(i.m2), $x(i.pagoCollab), sx(i.colaborador)
     ]),
   ]);
-  wsInv['!cols'] = [12,10,32,14,16,16,14,10,10,13,16].map(w => ({ wch: w }));
+  wsInv['!cols'] = [12,10,32,14,16,16,14,18,10,13,16].map(w => ({ wch: w }));
   XLSX.utils.book_append_sheet(wb, wsInv, 'Facturas');
 
   return wb;
@@ -632,15 +638,33 @@ function openPrintView(data) {
   const fN  = n => new Intl.NumberFormat('en-US').format(n ?? 0);
   const r   = data.resumen;
 
-  const salRows = data.salaries.map(s => `
-    <tr><td>${s.colaborador}</td><td class="num">${fN(s.m2)}</td>
-    <td class="num money">${fU(s.total)}</td><td class="num">${s.facturas}</td></tr>`).join('');
+  // Salary: summary row + breakdown per collaborator
+  const salRows = data.salaries.map(s => {
+    const breakdownRows = (s.breakdown || []).map((b, bi) => `
+      <tr class="detail-row ${bi%2===0?'det-even':''}">
+        <td style="padding-left:24px;color:#64748b">#${b.docNumber}</td>
+        <td style="color:#64748b">${b.customerName}</td>
+        <td><span class="task-badge">${b.tarea}</span></td>
+        <td class="num" style="color:#64748b">${fN(b.m2)}</td>
+        <td class="num" style="color:#64748b">${fU(b.pay)}</td>
+      </tr>`).join('');
+    return `
+      <tr class="collab-row">
+        <td><b>${s.colaborador}</b></td>
+        <td></td>
+        <td class="num"><b>${fN(s.m2)} SF</b></td>
+        <td class="num money"><b>${fU(s.total)}</b></td>
+        <td class="num">${s.facturas} fact.</td>
+      </tr>
+      ${breakdownRows}`;
+  }).join('');
 
   const invRows = data.invoices.map((i, idx) => `
     <tr class="${idx%2===0?'even':''}">
-      <td>${i.fecha}</td><td>${i.factura}</td><td>${i.cliente}</td><td>${i.estado}</td>
+      <td>${i.fecha}</td><td>${i.factura}</td><td>${i.cliente}</td><td>${i.estado||'—'}</td>
       <td class="num money">${fU(i.totalFacturado)}</td>
       <td class="num ${i.saldoPendiente>0?'pending':'paid'}">${i.saldoPendiente>0?fU(i.saldoPendiente):'Pagado'}</td>
+      <td>${i.tarea||'—'}</td>
       <td class="num">${i.m2>0?fN(i.m2):'—'}</td>
       <td class="num money">${i.pagoCollab>0?fU(i.pagoCollab):'—'}</td>
       <td>${i.colaborador}</td>
@@ -655,22 +679,26 @@ body{font-family:Arial,sans-serif;font-size:11px;color:#1e293b;padding:24px}
 .topbar button{background:white;color:#f97316;border:none;padding:6px 16px;font-weight:700;border-radius:4px;cursor:pointer}
 .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;border-bottom:3px solid #f97316;padding-bottom:12px}
 .header h1{font-size:20px;font-weight:900}.header .logo{font-size:22px;font-weight:900;color:#f97316}
-.kpi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px}
+.kpi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:24px}
 .kpi{background:#f8fafc;border-left:4px solid #f97316;padding:10px 12px;border-radius:4px}
 .kpi.green{border-color:#10b981}.kpi.red{border-color:#ef4444}.kpi.blue{border-color:#3b82f6}.kpi.amber{border-color:#f59e0b}
 .kpi-label{font-size:9px;font-weight:700;text-transform:uppercase;color:#94a3b8}
 .kpi-value{font-size:15px;font-weight:900;color:#1e293b;margin-top:2px}
-.section{margin-bottom:24px}
-.section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#64748b;border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-bottom:10px}
+.section{margin-bottom:28px}
+.section-title{font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:1.5px;color:#f97316;border-bottom:2px solid #f97316;padding-bottom:5px;margin-bottom:12px}
 table{width:100%;border-collapse:collapse;font-size:10.5px}
 th{background:#1e293b;color:white;padding:7px 8px;text-align:left;font-weight:700;font-size:9.5px;text-transform:uppercase}
 td{padding:5px 8px;border-bottom:1px solid #f1f5f9}
 tr.even td{background:#f8fafc}
-td.num{text-align:right}.td.money{font-weight:600}
-td.pending{color:#d97706;font-weight:700}.td.paid{color:#10b981}
-.sal-table{max-width:480px}
+tr.det-even td{background:#fafafa}
+tr.collab-row td{background:#f0f4ff;border-top:2px solid #c7d2fe;padding-top:7px;padding-bottom:7px}
+td.num{text-align:right}
+td.money{font-weight:600}
+td.pending{color:#d97706;font-weight:700}
+td.paid{color:#10b981}
 tfoot tr{background:#1e293b;color:white;font-weight:900}
-@media print{.topbar{display:none}}
+.task-badge{background:#e0f2fe;color:#0369a1;padding:1px 6px;border-radius:9px;font-size:9.5px;font-weight:600;white-space:nowrap}
+@media print{.topbar{display:none}.section{page-break-inside:avoid}}
 </style></head><body>
 <div class="topbar"><span><b>Reporte Apex Concrete</b> — ${per}</span>
 <button onclick="window.print()">🖨️ Imprimir / Guardar PDF</button></div>
@@ -682,14 +710,28 @@ tfoot tr{background:#1e293b;color:white;font-weight:900}
   <div class="kpi red"><div class="kpi-label">Costo Collabs</div><div class="kpi-value">${fU(r.totalCollabCost)}</div></div>
   <div class="kpi green"><div class="kpi-label">Margen Bruto</div><div class="kpi-value">${fU(r.grossMargin)}</div></div>
 </div>
-<div class="section"><div class="section-title">Salarios por Colaborador</div>
-<table class="sal-table"><thead><tr><th>Colaborador</th><th>SF</th><th>Total a Pagar</th><th># Facturas</th></tr></thead>
-<tbody>${salRows}</tbody>
-<tfoot><tr><td>TOTAL</td><td class="num">${fN(r.totalM2)}</td><td class="num">${fU(r.totalCollabCost)}</td><td class="num">${fN(data.salaries.reduce((a,x)=>a+x.facturas,0))}</td></tr></tfoot>
-</table></div>
-<div class="section"><div class="section-title">Detalle de Facturas (${r.invoiceCount})</div>
-<table><thead><tr><th>Fecha</th><th>Factura</th><th>Cliente</th><th>Estado</th><th>Total</th><th>Saldo</th><th>SF</th><th>Pago Collab</th><th>Colaborador</th></tr></thead>
-<tbody>${invRows}</tbody></table></div>
+
+<div class="section">
+  <div class="section-title">Salarios por Colaborador</div>
+  <table>
+    <thead><tr><th>Colaborador / Factura</th><th>Cliente</th><th class="num">SF</th><th class="num">Total / Pago</th><th class="num"># Fact.</th></tr></thead>
+    <tbody>${salRows}</tbody>
+    <tfoot><tr>
+      <td colspan="2">TOTAL</td>
+      <td class="num">${fN(r.totalM2)} SF</td>
+      <td class="num">${fU(r.totalCollabCost)}</td>
+      <td class="num">${fN(data.salaries.reduce((a,x)=>a+x.facturas,0))}</td>
+    </tr></tfoot>
+  </table>
+</div>
+
+<div class="section">
+  <div class="section-title">Detalle de Facturas (${r.invoiceCount})</div>
+  <table>
+    <thead><tr><th>Fecha</th><th>Factura</th><th>Cliente</th><th>Estado</th><th class="num">Total</th><th class="num">Saldo</th><th>Tarea</th><th class="num">SF</th><th class="num">Pago Collab</th><th>Colaborador</th></tr></thead>
+    <tbody>${invRows}</tbody>
+  </table>
+</div>
 </body></html>`;
 
   const win = window.open('', '_blank');
