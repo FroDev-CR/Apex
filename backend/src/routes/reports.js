@@ -238,7 +238,7 @@ reportRoutes.get('/export', async (req, res) => {
     // ── Salarios por colaborador ──
     const bySalary = new Map();
     for (const inv of invoices) {
-      if (!inv.hasMonoSlab) continue;
+      if (!inv.hasMonoSlab || (inv.collaboratorPay || 0) <= 1) continue;
       const key   = inv.collaborator?._id?.toString() || '__unassigned__';
       const name  = inv.collaborator?.name || 'Sin asignar';
       if (!bySalary.has(key)) bySalary.set(key, { colaborador: name, m2: 0, total: 0, facturas: 0 });
