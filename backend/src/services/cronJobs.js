@@ -1,25 +1,41 @@
 import { sendDailyReport } from './emailService.js';
+import { syncQBOInvoices } from './qboSync.js';
 import { getSettings } from '../models/AppSettings.js';
 
 let _interval = null;
-const fired = new Set(); // prevent double-firing in same minute
+const fired = new Set();
 
 function minuteKey(d) {
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}-${d.getHours()}-${d.getMinutes()}`;
 }
 
 async function tick() {
-  const now  = new Date();
-  const key  = minuteKey(now);
+  const now    = new Date();
+  const key    = minuteKey(now);
   if (fired.has(key)) return;
 
+  const hour   = now.getHours();
+  const minute = now.getMinutes();
+  const dow    = now.getDay();
+  const dom    = now.getDate();
+
+  // ── Midnight QBO sync ────────────────────────────────────────────────────
+  if (hour === 0 && minute === 0) {
+    fired.add(key);
+    console.log('⏰ [cron] Midnight QBO sync starting...');
+    try {
+      const result = await syncQBOInvoices();
+      console.log(`✅ [cron] Midnight sync done — ${result.inserted} new, ${result.updated} updated`);
+    } catch (err) {
+      console.error('❌ [cron] Midnight sync error:', err.message);
+    }
+    if (fired.size > 100) fired.clear();
+    return;
+  }
+
+  // ── Scheduled email report ───────────────────────────────────────────────
   try {
     const s = await getSettings();
-    const hour   = now.getHours();
-    const minute = now.getMinutes();
-    const dow    = now.getDay();    // 0=Sun
-    const dom    = now.getDate();   // 1-31
-
     const targetHour = s.reportHour ?? Number(process.env.REPORT_HOUR ?? 8);
 
     if (hour !== targetHour || minute !== 0) return;
@@ -35,7 +51,6 @@ async function tick() {
       fired.add(key);
       console.log(`⏰ [cron] Enviando reporte (${s.reportFrequency}) a ${s.reportEmails.join(', ')}`);
       await sendDailyReport();
-      // keep Set small
       if (fired.size > 100) fired.clear();
     }
   } catch (err) {
@@ -46,5 +61,5 @@ async function tick() {
 export function startCronJobs() {
   if (_interval) return;
   _interval = setInterval(tick, 60_000);
-  console.log('⏰ Cron jobs iniciados');
+  console.log('⏰ Cron jobs iniciados (midnight QBO sync + email reports)');
 }
