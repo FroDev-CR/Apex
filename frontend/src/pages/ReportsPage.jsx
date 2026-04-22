@@ -351,6 +351,7 @@ function SalaryTab({ params }) {
                       <tr className="text-xs text-steel-400 uppercase tracking-wide bg-concrete-50 dark:bg-steel-900">
                         <th className="text-left px-4 py-2 font-semibold">{t('col_invoice')}</th>
                         <th className="text-left px-4 py-2 font-semibold hidden sm:table-cell">{t('col_client')}</th>
+                        <th className="text-left px-4 py-2 font-semibold hidden md:table-cell">Tarea</th>
                         <th className="text-left px-4 py-2 font-semibold">{t('col_date')}</th>
                         <th className="text-right px-4 py-2 font-semibold">{t('col_m2')}</th>
                         <th className="text-right px-4 py-2 font-semibold">{t('col_pay')}</th>
@@ -361,6 +362,11 @@ function SalaryTab({ params }) {
                         <tr key={j} className="hover:bg-concrete-50 dark:hover:bg-steel-700">
                           <td className="px-4 py-2 font-mono text-steel-700 dark:text-steel-300">#{b.docNumber}</td>
                           <td className="px-4 py-2 text-steel-600 dark:text-steel-300 truncate max-w-[160px] hidden sm:table-cell">{b.customerName}</td>
+                          <td className="px-4 py-2 text-steel-500 dark:text-steel-400 hidden md:table-cell">
+                            <span className="inline-block bg-concrete-100 dark:bg-steel-700 text-steel-600 dark:text-steel-300 text-xs font-medium px-2 py-0.5 rounded-full truncate max-w-[140px]">
+                              {b.workTypes || '—'}
+                            </span>
+                          </td>
                           <td className="px-4 py-2 text-steel-500 dark:text-steel-400 whitespace-nowrap">{fmtDate(b.txnDate)}</td>
                           <td className="px-4 py-2 text-right text-steel-700 dark:text-steel-200">{fmtNum(b.monoSlabQty)}</td>
                           <td className="px-4 py-2 text-right font-semibold text-steel-900 dark:text-white">{fmt(b.pay)}</td>

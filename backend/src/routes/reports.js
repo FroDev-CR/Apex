@@ -23,6 +23,7 @@ reportRoutes.get('/salary', async (req, res) => {
 
     const invoiceFilter = {
       hasMonoSlab: true,
+      collaboratorPay: { $gt: 1 },
       ...dateFilter(dateFrom, dateTo)
     };
     if (collaboratorId) invoiceFilter.collaborator = collaboratorId;
