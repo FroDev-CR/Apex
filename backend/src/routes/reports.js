@@ -222,7 +222,10 @@ reportRoutes.get('/export', async (req, res) => {
     // ── Facturas detalladas ──
     // Phantoms (collaboratorPay <= 1) se muestran como facturas normales pero sin SF/pago
     const invoiceRows = invoices.map(inv => {
-      const isPhantom = inv.hasMonoSlab && (inv.collaboratorPay || 0) <= 1;
+      const hasOverride = inv.manualQty !== null || inv.manualPay !== null;
+      // Phantoms: QBO auto-creates $1 placeholder invoices — skip their SF/pay data.
+      // Never treat manually-overridden invoices as phantoms (Emily confirmed them).
+      const isPhantom = !hasOverride && inv.hasMonoSlab && (inv.collaboratorPay || 0) <= 1;
       return {
         fecha:          inv.txnDate ? new Date(inv.txnDate).toLocaleDateString('es-CR') : '',
         factura:        inv.docNumber,

@@ -907,8 +907,9 @@ function openPrintView(data) {
     </tr>`).join('');
 
   // ── EPOs section ──────────────────────────────────────────────────────────
+  // Show EPOs Emily confirmed — any invoice with a manual SF or $ override
   const epoInvoices = data.invoices.filter(i =>
-    i.tarea && i.tarea.toUpperCase().includes('EPO') && i.pagoCollab > 0
+    i.manualQty !== null || i.manualPay !== null
   );
   // Group by collaborator
   const epoByCollab = new Map();
