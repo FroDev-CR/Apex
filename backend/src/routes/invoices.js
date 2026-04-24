@@ -234,6 +234,26 @@ invoiceRoutes.post('/recalculate', async (req, res) => {
   }
 });
 
+// ─── PATCH /api/invoices/:id/manual-qty ───────────────────────────────────
+// Manually override SF quantity for EPO invoices
+invoiceRoutes.patch('/:id/manual-qty', async (req, res) => {
+  try {
+    const qty = req.body.qty === null ? null : Number(req.body.qty);
+    const invoice = await Invoice.findById(req.params.id);
+    if (!invoice) return res.status(404).json({ error: 'Invoice not found' });
+
+    invoice.manualQty = qty;
+    // Recalculate effective pay using override (or restore original if cleared)
+    const effectiveQty = qty !== null ? qty : invoice.monoSlabQty;
+    invoice.collaboratorPay = effectiveQty;
+    await invoice.save();
+
+    res.json({ success: true, manualQty: invoice.manualQty, collaboratorPay: invoice.collaboratorPay });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── PATCH /api/invoices/:id/collaborator ──────────────────────────────────
 // Manually assign/override a collaborator on an invoice
 invoiceRoutes.patch('/:id/collaborator', async (req, res) => {

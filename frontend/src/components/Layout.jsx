@@ -46,8 +46,8 @@ function Layout({ children }) {
                 </svg>
               </div>
               <div className="leading-none">
-                <span className="text-white font-black text-sm md:text-base tracking-tight">APEX</span>
-                <span className="text-primary-400 font-semibold text-sm md:text-base ml-1">Concrete</span>
+                <span className="text-white font-display font-black text-sm md:text-base tracking-widest">APEX</span>
+                <span className="text-primary-400 font-display font-semibold text-sm md:text-base ml-1.5">Concrete</span>
               </div>
             </div>
 

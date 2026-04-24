@@ -229,7 +229,7 @@ function InvoicesPage() {
       {/* ── Header ── */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-steel-900 dark:text-white">{t('nav_invoices')}</h1>
+          <h1 className="text-2xl font-display font-black tracking-tight text-steel-900 dark:text-white">{t('nav_invoices')}</h1>
           <p className="text-steel-500 text-sm mt-0.5">{pagination.total} {t('kpi_invoices').toLowerCase()}</p>
         </div>
 

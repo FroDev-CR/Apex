@@ -49,6 +49,10 @@ export default {
           900: '#403d39',
         },
       },
+      fontFamily: {
+        sans: ['Epilogue', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+        display: ['Barlow Semi Condensed', '-apple-system', 'sans-serif'],
+      },
       boxShadow: {
         'steel':    '0 1px 3px rgba(0,0,0,0.18), 0 1px 2px rgba(0,0,0,0.10)',
         'steel-md': '0 4px 12px rgba(0,0,0,0.18), 0 2px 4px rgba(0,0,0,0.10)',

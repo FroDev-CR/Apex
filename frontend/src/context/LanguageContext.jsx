@@ -2,8 +2,8 @@ import { createContext, useContext, useState } from 'react';
 
 const ES = {
   nav_reports: 'Reportes', nav_invoices: 'Facturas', nav_settings: 'Config',
-  tab_overview: 'Resumen', tab_salary: 'Salarios', tab_receivables: 'Por Cobrar',
-  tab_revenue: 'Ingresos', tab_margin: 'Margen',
+  tab_overview: 'Resumen', tab_salary: 'Salarios', tab_epos: 'EPOs',
+  tab_receivables: 'Por Cobrar', tab_revenue: 'Ingresos', tab_margin: 'Margen',
   preset_today_yesterday: 'Ayer y hoy',
   preset_this_month: 'Este mes', preset_last_month: 'Mes anterior',
   preset_last_90: 'Últimos 90 días', preset_this_year: 'Este año', preset_all: 'Todo',
@@ -34,8 +34,8 @@ const ES = {
 
 const EN = {
   nav_reports: 'Reports', nav_invoices: 'Invoices', nav_settings: 'Settings',
-  tab_overview: 'Overview', tab_salary: 'Payroll', tab_receivables: 'Receivables',
-  tab_revenue: 'Revenue', tab_margin: 'Margin',
+  tab_overview: 'Overview', tab_salary: 'Payroll', tab_epos: 'EPOs',
+  tab_receivables: 'Receivables', tab_revenue: 'Revenue', tab_margin: 'Margin',
   preset_today_yesterday: 'Today & Yesterday',
   preset_this_month: 'This month', preset_last_month: 'Last month',
   preset_last_90: 'Last 90 days', preset_this_year: 'This year', preset_all: 'All time',

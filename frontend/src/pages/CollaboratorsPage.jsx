@@ -162,8 +162,7 @@ function CollaboratorsPage() {
           {collaborators.map(c => (
             <div
               key={c._id}
-              className={`bg-white rounded-xl border-l-4 shadow-steel p-5 ${!c.isActive ? 'opacity-50' : ''}`}
-              style={{ borderLeftColor: c.color }}
+              className={`bg-white dark:bg-steel-800 rounded-xl border border-concrete-200 dark:border-steel-700 shadow-steel p-5 ${!c.isActive ? 'opacity-50' : ''}`}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
-import { reportsApi, paymentsApi } from '../api';
+import { reportsApi, paymentsApi, invoicesApi } from '../api';
 import { useLanguage } from '../context/LanguageContext';
 
 // ─── Formatters ────────────────────────────────────────────────────────────
@@ -34,14 +34,17 @@ function Skeleton({ className = '' }) {
 
 // ─── KPI Card (small, for tabs) ────────────────────────────────────────────
 function KpiCard({ label, value, sub, color = 'primary' }) {
-  const colors = {
-    primary: 'border-primary-400', green: 'border-green-400',
-    blue: 'border-blue-400', amber: 'border-amber-400', red: 'border-red-400',
+  const labelColors = {
+    primary: 'text-primary-500 dark:text-primary-400',
+    green:   'text-emerald-600 dark:text-emerald-400',
+    blue:    'text-blue-600 dark:text-blue-400',
+    amber:   'text-amber-600 dark:text-amber-400',
+    red:     'text-red-600 dark:text-red-400',
   };
   return (
-    <div className={`bg-white dark:bg-steel-800 rounded-xl border-l-4 ${colors[color]} shadow-steel px-4 py-3`}>
-      <div className="text-xs text-steel-400 dark:text-steel-400 uppercase tracking-wide font-semibold mb-1 leading-tight">{label}</div>
-      <div className="text-xl font-black text-steel-900 dark:text-white leading-tight truncate">{value}</div>
+    <div className="bg-white dark:bg-steel-800 rounded-xl shadow-steel px-4 py-3">
+      <div className={`text-[10px] font-bold uppercase tracking-widest mb-1 leading-tight ${labelColors[color]}`}>{label}</div>
+      <div className="text-xl font-display font-black text-steel-900 dark:text-white leading-tight truncate tabular">{value}</div>
       {sub && <div className="text-xs text-steel-500 dark:text-steel-400 mt-0.5">{sub}</div>}
     </div>
   );
@@ -69,35 +72,41 @@ function OverviewTab({ params }) {
   );
   if (!data) return null;
 
+  const STAT_ICONS = {
+    invoiced: (<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>),
+    paid:     (<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>),
+    pending:  (<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>),
+    collab:   (<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>),
+    margin:   (<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>),
+    pct:      (<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>),
+  };
   const stats = [
-    { label: t('kpi_invoiced'),     value: fmt(data.totalRevenue),    sub: `${data.invoiceCount} ${t('kpi_invoices')}`, color: 'blue',    icon: '🧾' },
-    { label: t('kpi_paid'),         value: fmt(data.totalRevenue - data.totalReceivable), sub: `${fmtPct(data.totalRevenue > 0 ? ((data.totalRevenue - data.totalReceivable)/data.totalRevenue)*100 : 0)} cobrado`, color: 'green', icon: '✅' },
-    { label: t('kpi_receivable'),   value: fmt(data.totalReceivable), sub: 'saldo pendiente', color: 'amber', icon: '⏳' },
-    { label: t('kpi_collab_cost'),  value: fmt(data.totalCollabCost), sub: `${fmtNum(data.totalM2)} ${t('kpi_m2')}`, color: 'red', icon: '👷' },
-    { label: t('kpi_gross_margin'), value: fmt(data.grossMargin),     sub: fmtPct(data.marginPct), color: 'green', icon: '📈' },
-    { label: t('kpi_margin_pct'),   value: fmtPct(data.marginPct),   sub: `${fmtNum(data.totalM2)} SF MONO SLAB`, color: 'primary', icon: '💹' },
+    { label: t('kpi_invoiced'),     value: fmt(data.totalRevenue),    sub: `${data.invoiceCount} ${t('kpi_invoices')}`, color: 'blue',    iconKey: 'invoiced' },
+    { label: t('kpi_paid'),         value: fmt(data.totalRevenue - data.totalReceivable), sub: `${fmtPct(data.totalRevenue > 0 ? ((data.totalRevenue - data.totalReceivable)/data.totalRevenue)*100 : 0)} cobrado`, color: 'green', iconKey: 'paid' },
+    { label: t('kpi_receivable'),   value: fmt(data.totalReceivable), sub: 'saldo pendiente', color: 'amber', iconKey: 'pending' },
+    { label: t('kpi_collab_cost'),  value: fmt(data.totalCollabCost), sub: `${fmtNum(data.totalM2)} ${t('kpi_m2')}`, color: 'red', iconKey: 'collab' },
+    { label: t('kpi_gross_margin'), value: fmt(data.grossMargin),     sub: fmtPct(data.marginPct), color: 'green', iconKey: 'margin' },
+    { label: t('kpi_margin_pct'),   value: fmtPct(data.marginPct),   sub: `${fmtNum(data.totalM2)} SF`, color: 'primary', iconKey: 'pct' },
   ];
+  const iconBg = { blue: 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400', green: 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400', amber: 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400', red: 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400', primary: 'bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400' };
+  const valColor = { blue: 'text-blue-600 dark:text-blue-300', green: 'text-emerald-600 dark:text-emerald-300', amber: 'text-amber-600 dark:text-amber-300', red: 'text-red-600 dark:text-red-300', primary: 'text-primary-600 dark:text-primary-300' };
 
   return (
     <div className="flex flex-col gap-3">
-      {stats.map((s, i) => {
-        const borderColor = s.color === 'blue' ? 'border-l-blue-400' : s.color === 'green' ? 'border-l-green-400' : s.color === 'amber' ? 'border-l-amber-400' : s.color === 'red' ? 'border-l-red-400' : 'border-l-primary-400';
-        const iconStyle = s.color === 'blue' ? 'bg-blue-50 text-blue-500' : s.color === 'green' ? 'bg-green-50 text-green-500' : s.color === 'amber' ? 'bg-amber-50 text-amber-500' : s.color === 'red' ? 'bg-red-50 text-red-500' : 'bg-primary-50 text-primary-500';
-        return (
-          <div key={i} className={`bg-white dark:bg-steel-800 rounded-2xl shadow-steel overflow-hidden border-l-4 ${borderColor}`}>
+      {stats.map((s, i) => (
+          <div key={i} className="bg-white dark:bg-steel-800 rounded-2xl shadow-steel overflow-hidden">
             <div className="flex items-center gap-4 px-5 py-5">
-              <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 text-2xl ${iconStyle}`}>
-                {s.icon}
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${iconBg[s.color]}`}>
+                {STAT_ICONS[s.iconKey]}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-xs text-steel-400 uppercase tracking-widest font-semibold mb-0.5">{s.label}</div>
-                <div className="text-2xl sm:text-3xl font-black text-steel-900 dark:text-white leading-none">{s.value}</div>
+                <div className="text-[10px] font-bold text-steel-400 uppercase tracking-widest mb-0.5">{s.label}</div>
+                <div className={`text-2xl sm:text-3xl font-display font-black leading-none tabular ${valColor[s.color]}`}>{s.value}</div>
                 <div className="text-xs text-steel-500 dark:text-steel-400 mt-1">{s.sub}</div>
               </div>
             </div>
           </div>
-        );
-      })}
+        ))}
     </div>
   );
 }
@@ -303,7 +312,7 @@ function SalaryTab({ params }) {
         <div className="flex items-center gap-3">
           <div className="text-right">
             <div className="text-xs text-steel-400 uppercase">{t('salary_total')}</div>
-            <div className="text-xl font-black text-steel-900 dark:text-white">{fmt(data.grandTotal + extTotal)}</div>
+            <div className="text-xl font-display font-black tabular text-steel-900 dark:text-white">{fmt(data.grandTotal + extTotal)}</div>
           </div>
           <button
             onClick={() => setShowModal(true)}
@@ -440,7 +449,7 @@ function ReceivablesTab({ params }) {
         <SectionTitle>{t('receivables_title')}</SectionTitle>
         <div className="text-right">
           <div className="text-xs text-steel-400 uppercase">{t('receivables_total')}</div>
-          <div className="text-xl font-black text-amber-600">{fmt(data.totalReceivable)}</div>
+          <div className="text-xl font-display font-black tabular text-amber-600">{fmt(data.totalReceivable)}</div>
         </div>
       </div>
       {data.customers.length === 0 ? (
@@ -572,6 +581,171 @@ function MarginTab({ params }) {
   );
 }
 
+// ─── TAB: EPOs ────────────────────────────────────────────────────────────
+function EPOsTab({ params }) {
+  const [data, setData]       = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState({}); // { [invoiceId]: draftValue }
+  const [saving, setSaving]   = useState({});
+
+  const fetchEpos = () => {
+    setLoading(true);
+    reportsApi.epos(params).then(setData).catch(e => toast.error(e.message)).finally(() => setLoading(false));
+  };
+
+  useEffect(() => { fetchEpos(); }, [JSON.stringify(params)]);
+
+  const handleEdit = (id, currentQty) => {
+    setEditing(prev => ({ ...prev, [id]: String(currentQty ?? '') }));
+  };
+
+  const handleCancel = (id) => {
+    setEditing(prev => { const n = { ...prev }; delete n[id]; return n; });
+  };
+
+  const handleSave = async (id) => {
+    const raw = editing[id];
+    const qty = raw === '' ? null : Number(raw);
+    if (qty !== null && (isNaN(qty) || qty < 0)) {
+      toast.error('SF inválido');
+      return;
+    }
+    setSaving(prev => ({ ...prev, [id]: true }));
+    try {
+      await invoicesApi.setManualQty(id, qty);
+      toast.success(qty === null ? 'SF restaurado a original' : `SF actualizado: ${fmtNum(qty)}`);
+      handleCancel(id);
+      fetchEpos();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setSaving(prev => { const n = { ...prev }; delete n[id]; return n; });
+    }
+  };
+
+  if (loading) return <div className="space-y-3">{Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-16" />)}</div>;
+  if (!data) return null;
+
+  const grandTotal = data.results.reduce((s, r) => s + r.totalPay, 0);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <SectionTitle>EPOs — Editar SF</SectionTitle>
+        <div className="text-right">
+          <div className="text-xs text-steel-400 uppercase">Total pago EPOs</div>
+          <div className="text-xl font-display font-black tabular text-steel-900 dark:text-white">{fmt(grandTotal)}</div>
+        </div>
+      </div>
+
+      {data.results.length === 0 ? (
+        <div className="text-center py-12 text-steel-400">No hay EPOs en este período</div>
+      ) : (
+        <div className="space-y-3">
+          {data.results.map((r, i) => (
+            <div key={i} className="bg-white dark:bg-steel-800 rounded-xl border border-concrete-200 dark:border-steel-700 shadow-steel overflow-hidden">
+              {/* Collaborator header */}
+              <div className="flex items-center gap-3 px-4 py-3 bg-concrete-50 dark:bg-steel-900 border-b border-concrete-100 dark:border-steel-700">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
+                  style={{ backgroundColor: r.collaborator?.color || '#9ca3af' }}>
+                  {r.collaborator ? r.collaborator.name.charAt(0).toUpperCase() : '?'}
+                </div>
+                <div className="flex-1 font-semibold text-steel-900 dark:text-white">
+                  {r.collaborator?.name || <span className="text-steel-400 italic">Sin asignar</span>}
+                </div>
+                <div className="text-sm font-bold text-steel-700 dark:text-steel-200">{fmt(r.totalPay)}</div>
+              </div>
+
+              {/* Invoice rows */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[500px]">
+                  <thead>
+                    <tr className="text-xs text-steel-400 uppercase tracking-wide">
+                      <th className="text-left px-4 py-2 font-semibold">Factura</th>
+                      <th className="text-left px-4 py-2 font-semibold hidden sm:table-cell">Cliente</th>
+                      <th className="text-left px-4 py-2 font-semibold hidden sm:table-cell">Fecha</th>
+                      <th className="text-right px-4 py-2 font-semibold">SF QBO</th>
+                      <th className="text-center px-4 py-2 font-semibold">SF Manual</th>
+                      <th className="text-right px-4 py-2 font-semibold">Pago</th>
+                      <th className="px-4 py-2"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-concrete-100 dark:divide-steel-700">
+                    {r.invoices.map((inv) => {
+                      const isEditing = editing[inv._id] !== undefined;
+                      const isSaving  = saving[inv._id];
+                      const hasOverride = inv.manualQty !== null && inv.manualQty !== undefined;
+                      return (
+                        <tr key={inv._id} className="hover:bg-concrete-50 dark:hover:bg-steel-700">
+                          <td className="px-4 py-2 font-mono text-steel-700 dark:text-steel-300">#{inv.docNumber}</td>
+                          <td className="px-4 py-2 text-steel-600 dark:text-steel-300 truncate max-w-[140px] hidden sm:table-cell">{inv.customerName}</td>
+                          <td className="px-4 py-2 text-steel-500 dark:text-steel-400 whitespace-nowrap hidden sm:table-cell">{fmtDate(inv.txnDate)}</td>
+                          <td className="px-4 py-2 text-right text-steel-400 dark:text-steel-500 tabular-nums">
+                            {fmtNum(inv.monoSlabQty)}
+                          </td>
+                          <td className="px-4 py-2">
+                            {isEditing ? (
+                              <input
+                                type="number" min="0" step="1"
+                                className="w-24 mx-auto block border border-primary-400 rounded-lg px-2 py-1 text-sm text-center text-steel-800 dark:text-steel-100 bg-white dark:bg-steel-700 focus:outline-none focus:ring-2 focus:ring-primary-400"
+                                value={editing[inv._id]}
+                                onChange={e => setEditing(prev => ({ ...prev, [inv._id]: e.target.value }))}
+                                autoFocus
+                              />
+                            ) : (
+                              <div className="text-center">
+                                {hasOverride
+                                  ? <span className="inline-block bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 font-bold px-2 py-0.5 rounded-full text-xs">{fmtNum(inv.manualQty)}</span>
+                                  : <span className="text-steel-300 dark:text-steel-600 text-xs">—</span>
+                                }
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-4 py-2 text-right font-semibold text-steel-900 dark:text-white tabular-nums">
+                            {fmt(inv.collaboratorPay)}
+                          </td>
+                          <td className="px-4 py-2">
+                            {isEditing ? (
+                              <div className="flex gap-1 justify-end">
+                                <button onClick={() => handleSave(inv._id)} disabled={isSaving}
+                                  className="px-2 py-1 bg-primary-500 hover:bg-primary-600 text-white rounded-lg text-xs font-semibold disabled:opacity-40">
+                                  {isSaving ? '...' : 'OK'}
+                                </button>
+                                <button onClick={() => handleCancel(inv._id)}
+                                  className="px-2 py-1 border border-concrete-200 dark:border-steel-600 text-steel-500 rounded-lg text-xs hover:bg-concrete-50 dark:hover:bg-steel-700">
+                                  ✕
+                                </button>
+                                {hasOverride && (
+                                  <button onClick={() => { setEditing(prev => ({ ...prev, [inv._id]: '' })); }}
+                                    className="px-2 py-1 text-xs text-red-400 hover:text-red-600" title="Quitar override">
+                                    Reset
+                                  </button>
+                                )}
+                              </div>
+                            ) : (
+                              <button onClick={() => handleEdit(inv._id, inv.manualQty ?? inv.monoSlabQty)}
+                                className="flex items-center gap-1 px-2 py-1 text-xs text-steel-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors ml-auto">
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                                Editar
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Export helpers ────────────────────────────────────────────────────────
 const $x = v => ({ v: Number(v) || 0, t: 'n', z: '"$"#,##0.00' });
 const m2c = v => ({ v: Number(v) || 0, t: 'n', z: '#,##0' });
@@ -680,8 +854,8 @@ body{font-family:Arial,sans-serif;font-size:11px;color:#1e293b;padding:24px}
 .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;border-bottom:3px solid #f97316;padding-bottom:12px}
 .header h1{font-size:20px;font-weight:900}.header .logo{font-size:22px;font-weight:900;color:#f97316}
 .kpi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:24px}
-.kpi{background:#f8fafc;border-left:4px solid #f97316;padding:10px 12px;border-radius:4px}
-.kpi.green{border-color:#10b981}.kpi.red{border-color:#ef4444}.kpi.blue{border-color:#3b82f6}.kpi.amber{border-color:#f59e0b}
+.kpi{background:#f8fafc;border-top:3px solid #f97316;padding:10px 12px;border-radius:4px}
+.kpi.green{border-top-color:#10b981}.kpi.red{border-top-color:#ef4444}.kpi.blue{border-top-color:#3b82f6}.kpi.amber{border-top-color:#f59e0b}
 .kpi-label{font-size:9px;font-weight:700;text-transform:uppercase;color:#94a3b8}
 .kpi-value{font-size:15px;font-weight:900;color:#1e293b;margin-top:2px}
 .section{margin-bottom:28px}
@@ -823,6 +997,7 @@ function ExportFAB({ params }) {
 const TABS_DEF = [
   { id: 'overview',    key: 'tab_overview' },
   { id: 'salary',      key: 'tab_salary' },
+  { id: 'epos',        key: 'tab_epos' },
   { id: 'receivables', key: 'tab_receivables' },
   { id: 'revenue',     key: 'tab_revenue' },
   { id: 'margin',      key: 'tab_margin' },
@@ -871,7 +1046,7 @@ function ReportsPage() {
 
       {/* ── Header ── */}
       <div className="space-y-2">
-        <h1 className="text-2xl font-bold text-steel-900 dark:text-white">Reportes</h1>
+        <h1 className="text-2xl font-display font-black text-steel-900 dark:text-white tracking-tight">Reportes</h1>
 
         {/* Period presets */}
         <div className="flex flex-wrap items-center gap-1.5">
@@ -919,6 +1094,7 @@ function ReportsPage() {
       <div>
         {activeTab === 'overview'    && <OverviewTab    params={params} />}
         {activeTab === 'salary'      && <SalaryTab      params={params} />}
+        {activeTab === 'epos'        && <EPOsTab        params={params} />}
         {activeTab === 'receivables' && <ReceivablesTab params={params} />}
         {activeTab === 'revenue'     && <RevenueTab     params={params} />}
         {activeTab === 'margin'      && <MarginTab      params={params} />}

@@ -8,7 +8,7 @@
 
 body {
   margin: 0;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'Epilogue', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   /* Fondo estilo concreto con cuadrícula sutil */
@@ -39,6 +39,22 @@ body {
 ::-webkit-scrollbar-track { background: #c8c4bc; }
 ::-webkit-scrollbar-thumb { background: #718496; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #526070; }
+
+/* Tabular numbers for data columns */
+.tabular { font-variant-numeric: tabular-nums; }
+
+/* Barlow Semi Condensed for display/headings */
+.font-display { font-family: 'Barlow Semi Condensed', -apple-system, sans-serif; }
+
+/* Smooth page transitions */
+main > * { animation: fadeUp 0.18s ease-out both; }
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  main > * { animation: none; }
+}
 
 /* Drag & drop */
 .dragging { opacity: 0.5; cursor: grabbing; }

@@ -276,6 +276,61 @@ reportRoutes.get('/export', async (req, res) => {
   }
 });
 
+// ─── GET /api/reports/epos ────────────────────────────────────────────────
+// EPO invoices grouped by collaborator — editable SF for salary override
+reportRoutes.get('/epos', async (req, res) => {
+  try {
+    const { dateFrom, dateTo } = req.query;
+    const filter = {
+      'lineItems': {
+        $elemMatch: {
+          $or: [
+            { productService: { $regex: 'EPO', $options: 'i' } },
+            { description: { $regex: 'EPO', $options: 'i' } }
+          ]
+        }
+      },
+      ...dateFilter(dateFrom, dateTo)
+    };
+
+    const invoices = await Invoice.find(filter)
+      .populate('collaborator', 'name color')
+      .sort({ txnDate: -1 });
+
+    const byCollab = new Map();
+    for (const inv of invoices) {
+      const key  = inv.collaborator ? inv.collaborator._id.toString() : '__unassigned__';
+      if (!byCollab.has(key)) {
+        byCollab.set(key, { collaborator: inv.collaborator || null, invoices: [] });
+      }
+      byCollab.get(key).invoices.push({
+        _id:            inv._id,
+        docNumber:      inv.docNumber,
+        customerName:   inv.customerName,
+        txnDate:        inv.txnDate,
+        totalAmount:    inv.totalAmount,
+        monoSlabQty:    inv.monoSlabQty,
+        manualQty:      inv.manualQty,
+        collaboratorPay: inv.collaboratorPay,
+      });
+    }
+
+    const results = Array.from(byCollab.values()).map(g => ({
+      collaborator: g.collaborator,
+      invoices: g.invoices,
+      totalPay: g.invoices.reduce((s, i) => s + i.collaboratorPay, 0),
+    })).sort((a, b) => {
+      if (!a.collaborator && b.collaborator) return 1;
+      if (a.collaborator && !b.collaborator) return -1;
+      return b.totalPay - a.totalPay;
+    });
+
+    res.json({ results, period: { dateFrom, dateTo } });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── GET /api/reports/overview ─────────────────────────────────────────────
 // Dashboard overview: key numbers at a glance
 reportRoutes.get('/overview', async (req, res) => {

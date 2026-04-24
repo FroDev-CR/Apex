@@ -66,6 +66,11 @@ export const invoicesApi = {
       method: 'PATCH',
       body: JSON.stringify({ collaboratorId })
     }),
+  setManualQty: (id, qty) =>
+    fetchApi(`/api/invoices/${id}/manual-qty`, {
+      method: 'PATCH',
+      body: JSON.stringify({ qty })
+    }),
   recalculate: () => fetchApi('/api/invoices/recalculate', { method: 'POST' })
 };
 
@@ -94,6 +99,10 @@ export const reportsApi = {
   export: (params = {}) => {
     const query = new URLSearchParams(params).toString();
     return fetchApi(`/api/reports/export${query ? `?${query}` : ''}`);
+  },
+  epos: (params = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return fetchApi(`/api/reports/epos${query ? `?${query}` : ''}`);
   }
 };
 

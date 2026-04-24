@@ -33,9 +33,15 @@ function mapQBOInvoice(qbo, collabMap) {
     }));
 
   const privateNote = qbo.PrivateNote || '';
-  const collaboratorId = matchCollaborator(privateNote, collabMap);
-
   const customFields = qbo.CustomField || [];
+  // Log custom field names to help debug field name mismatches
+  if (customFields.length > 0) {
+    const fieldNames = customFields.map(f => `"${f.Name}"="${f.StringValue}"`).join(', ');
+    console.log(`[qboSync] Invoice #${qbo.DocNumber} CustomFields: ${fieldNames}`);
+  }
+  const employeeField = customFields.find(f => f.Name?.toLowerCase().includes('employee'))?.StringValue || '';
+  const collaboratorRawText = employeeField || privateNote;
+  const collaboratorId = matchCollaborator(collaboratorRawText, collabMap);
   const builderNumber = customFields.find(f => f.Name?.toLowerCase().includes('builder'))?.StringValue || '';
   const estado = customFields.find(f => f.Name?.toLowerCase() === 'estado')?.StringValue || '';
 
@@ -59,7 +65,7 @@ function mapQBOInvoice(qbo, collabMap) {
     estado,
     privateNote,
     collaborator: collaboratorId,
-    collaboratorRaw: privateNote,
+    collaboratorRaw: collaboratorRawText,
     ...payFields,
     syncedAt: new Date()
   };

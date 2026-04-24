@@ -53,12 +53,11 @@ const invoiceSchema = new mongoose.Schema({
   collaboratorRaw: { type: String, default: '' }, // texto crudo antes de hacer match
 
   // ── Computed / cached ──────────────────────────────────────────────────
-  // ¿Tiene al menos una línea de POUR MONO SLAB?
   hasMonoSlab: { type: Boolean, default: false },
-  // Total m² de POUR MONO SLAB en esta invoice
   monoSlabQty: { type: Number, default: 0 },
-  // Pago calculado al colaborador ($1 × monoSlabQty)
   collaboratorPay: { type: Number, default: 0 },
+  // Manual SF override (EPO invoices — overrides monoSlabQty for salary calc)
+  manualQty: { type: Number, default: null },
 
   // ── Sync ──────────────────────────────────────────────────────────────
   syncedAt: { type: Date, default: Date.now }
