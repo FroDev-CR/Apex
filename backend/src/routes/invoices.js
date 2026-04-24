@@ -234,8 +234,18 @@ invoiceRoutes.post('/recalculate', async (req, res) => {
   }
 });
 
+// Shared helper — $ priority: manualPay > manualQty × $1 > monoSlabQty × $1
+function recalcEffectivePay(invoice) {
+  if (invoice.manualPay !== null && invoice.manualPay !== undefined) {
+    return invoice.manualPay;
+  }
+  const qty = (invoice.manualQty !== null && invoice.manualQty !== undefined)
+    ? invoice.manualQty
+    : (invoice.monoSlabQty || 0);
+  return qty; // $1/SF
+}
+
 // ─── PATCH /api/invoices/:id/manual-qty ───────────────────────────────────
-// Manually override SF quantity for EPO invoices
 invoiceRoutes.patch('/:id/manual-qty', async (req, res) => {
   try {
     const qty = req.body.qty === null ? null : Number(req.body.qty);
@@ -243,12 +253,27 @@ invoiceRoutes.patch('/:id/manual-qty', async (req, res) => {
     if (!invoice) return res.status(404).json({ error: 'Invoice not found' });
 
     invoice.manualQty = qty;
-    // Recalculate effective pay using override (or restore original if cleared)
-    const effectiveQty = qty !== null ? qty : invoice.monoSlabQty;
-    invoice.collaboratorPay = effectiveQty;
+    invoice.collaboratorPay = recalcEffectivePay(invoice);
     await invoice.save();
 
     res.json({ success: true, manualQty: invoice.manualQty, collaboratorPay: invoice.collaboratorPay });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── PATCH /api/invoices/:id/manual-pay ───────────────────────────────────
+invoiceRoutes.patch('/:id/manual-pay', async (req, res) => {
+  try {
+    const pay = req.body.pay === null ? null : Number(req.body.pay);
+    const invoice = await Invoice.findById(req.params.id);
+    if (!invoice) return res.status(404).json({ error: 'Invoice not found' });
+
+    invoice.manualPay = pay;
+    invoice.collaboratorPay = recalcEffectivePay(invoice);
+    await invoice.save();
+
+    res.json({ success: true, manualPay: invoice.manualPay, collaboratorPay: invoice.collaboratorPay });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

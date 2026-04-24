@@ -56,8 +56,9 @@ const invoiceSchema = new mongoose.Schema({
   hasMonoSlab: { type: Boolean, default: false },
   monoSlabQty: { type: Number, default: 0 },
   collaboratorPay: { type: Number, default: 0 },
-  // Manual SF override (EPO invoices — overrides monoSlabQty for salary calc)
-  manualQty: { type: Number, default: null },
+  // Manual overrides (EPO invoices)
+  manualQty: { type: Number, default: null }, // SF override → pay = manualQty × $1
+  manualPay: { type: Number, default: null }, // $ override → takes priority over manualQty
 
   // ── Sync ──────────────────────────────────────────────────────────────
   syncedAt: { type: Date, default: Date.now }

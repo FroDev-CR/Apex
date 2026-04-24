@@ -311,6 +311,7 @@ reportRoutes.get('/epos', async (req, res) => {
         totalAmount:    inv.totalAmount,
         monoSlabQty:    inv.monoSlabQty,
         manualQty:      inv.manualQty,
+        manualPay:      inv.manualPay,
         collaboratorPay: inv.collaboratorPay,
       });
     }

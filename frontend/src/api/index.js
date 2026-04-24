@@ -71,6 +71,11 @@ export const invoicesApi = {
       method: 'PATCH',
       body: JSON.stringify({ qty })
     }),
+  setManualPay: (id, pay) =>
+    fetchApi(`/api/invoices/${id}/manual-pay`, {
+      method: 'PATCH',
+      body: JSON.stringify({ pay })
+    }),
   recalculate: () => fetchApi('/api/invoices/recalculate', { method: 'POST' })
 };
 

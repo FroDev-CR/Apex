@@ -583,10 +583,11 @@ function MarginTab({ params }) {
 
 // ─── TAB: EPOs ────────────────────────────────────────────────────────────
 function EPOsTab({ params }) {
-  const [data, setData]       = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState({}); // { [invoiceId]: draftValue }
-  const [saving, setSaving]   = useState({});
+  const [data, setData]         = useState(null);
+  const [loading, setLoading]   = useState(true);
+  const [editing, setEditing]   = useState({}); // { [invoiceId]: draftValue } — SF
+  const [editingPay, setEditingPay] = useState({}); // { [invoiceId]: draftValue } — $
+  const [saving, setSaving]     = useState({});
 
   const fetchEpos = () => {
     setLoading(true);
@@ -598,18 +599,13 @@ function EPOsTab({ params }) {
   const handleEdit = (id, currentQty) => {
     setEditing(prev => ({ ...prev, [id]: String(currentQty ?? '') }));
   };
-
   const handleCancel = (id) => {
     setEditing(prev => { const n = { ...prev }; delete n[id]; return n; });
   };
-
   const handleSave = async (id) => {
     const raw = editing[id];
     const qty = raw === '' ? null : Number(raw);
-    if (qty !== null && (isNaN(qty) || qty < 0)) {
-      toast.error('SF inválido');
-      return;
-    }
+    if (qty !== null && (isNaN(qty) || qty < 0)) { toast.error('SF inválido'); return; }
     setSaving(prev => ({ ...prev, [id]: true }));
     try {
       await invoicesApi.setManualQty(id, qty);
@@ -620,6 +616,29 @@ function EPOsTab({ params }) {
       toast.error(err.message);
     } finally {
       setSaving(prev => { const n = { ...prev }; delete n[id]; return n; });
+    }
+  };
+
+  const handleEditPay = (id, currentPay) => {
+    setEditingPay(prev => ({ ...prev, [id]: String(currentPay ?? '') }));
+  };
+  const handleCancelPay = (id) => {
+    setEditingPay(prev => { const n = { ...prev }; delete n[id]; return n; });
+  };
+  const handleSavePay = async (id) => {
+    const raw = editingPay[id];
+    const pay = raw === '' ? null : Number(raw);
+    if (pay !== null && (isNaN(pay) || pay < 0)) { toast.error('$ inválido'); return; }
+    setSaving(prev => ({ ...prev, [`pay_${id}`]: true }));
+    try {
+      await invoicesApi.setManualPay(id, pay);
+      toast.success(pay === null ? 'Pago restaurado' : `Pago actualizado: ${fmt(pay)}`);
+      handleCancelPay(id);
+      fetchEpos();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setSaving(prev => { const n = { ...prev }; delete n[`pay_${id}`]; return n; });
     }
   };
 
@@ -666,8 +685,9 @@ function EPOsTab({ params }) {
                       <th className="text-left px-4 py-2 font-semibold hidden sm:table-cell">Fecha</th>
                       <th className="text-right px-4 py-2 font-semibold">SF QBO</th>
                       <th className="text-center px-4 py-2 font-semibold">SF Manual</th>
+                      <th className="text-center px-4 py-2 font-semibold">$ Manual</th>
                       <th className="text-right px-4 py-2 font-semibold">Pago</th>
-                      <th className="px-4 py-2"></th>
+                      <th className="px-2 py-2"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-concrete-100 dark:divide-steel-700">
@@ -683,55 +703,97 @@ function EPOsTab({ params }) {
                           <td className="px-4 py-2 text-right text-steel-400 dark:text-steel-500 tabular-nums">
                             {fmtNum(inv.monoSlabQty)}
                           </td>
-                          <td className="px-4 py-2">
+
+                          {/* SF Manual */}
+                          <td className="px-3 py-2">
                             {isEditing ? (
-                              <input
-                                type="number" min="0" step="1"
-                                className="w-24 mx-auto block border border-primary-400 rounded-lg px-2 py-1 text-sm text-center text-steel-800 dark:text-steel-100 bg-white dark:bg-steel-700 focus:outline-none focus:ring-2 focus:ring-primary-400"
-                                value={editing[inv._id]}
-                                onChange={e => setEditing(prev => ({ ...prev, [inv._id]: e.target.value }))}
-                                autoFocus
-                              />
-                            ) : (
-                              <div className="text-center">
-                                {hasOverride
-                                  ? <span className="inline-block bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 font-bold px-2 py-0.5 rounded-full text-xs">{fmtNum(inv.manualQty)}</span>
-                                  : <span className="text-steel-300 dark:text-steel-600 text-xs">—</span>
-                                }
-                              </div>
-                            )}
-                          </td>
-                          <td className="px-4 py-2 text-right font-semibold text-steel-900 dark:text-white tabular-nums">
-                            {fmt(inv.collaboratorPay)}
-                          </td>
-                          <td className="px-4 py-2">
-                            {isEditing ? (
-                              <div className="flex gap-1 justify-end">
+                              <div className="flex gap-1 items-center justify-center">
+                                <input
+                                  type="number" min="0" step="1"
+                                  className="w-20 border border-primary-400 rounded-lg px-2 py-1 text-sm text-center text-steel-800 dark:text-steel-100 bg-white dark:bg-steel-700 focus:outline-none focus:ring-2 focus:ring-primary-400"
+                                  value={editing[inv._id]}
+                                  onChange={e => setEditing(prev => ({ ...prev, [inv._id]: e.target.value }))}
+                                  autoFocus
+                                />
                                 <button onClick={() => handleSave(inv._id)} disabled={isSaving}
                                   className="px-2 py-1 bg-primary-500 hover:bg-primary-600 text-white rounded-lg text-xs font-semibold disabled:opacity-40">
-                                  {isSaving ? '...' : 'OK'}
+                                  {isSaving ? '…' : '✓'}
                                 </button>
                                 <button onClick={() => handleCancel(inv._id)}
-                                  className="px-2 py-1 border border-concrete-200 dark:border-steel-600 text-steel-500 rounded-lg text-xs hover:bg-concrete-50 dark:hover:bg-steel-700">
-                                  ✕
-                                </button>
+                                  className="px-1.5 py-1 border border-concrete-200 dark:border-steel-600 text-steel-500 rounded-lg text-xs">✕</button>
                                 {hasOverride && (
-                                  <button onClick={() => { setEditing(prev => ({ ...prev, [inv._id]: '' })); }}
-                                    className="px-2 py-1 text-xs text-red-400 hover:text-red-600" title="Quitar override">
-                                    Reset
-                                  </button>
+                                  <button onClick={() => setEditing(prev => ({ ...prev, [inv._id]: '' }))}
+                                    className="px-1.5 py-1 text-xs text-red-400 hover:text-red-600" title="Reset">↩</button>
                                 )}
                               </div>
                             ) : (
-                              <button onClick={() => handleEdit(inv._id, inv.manualQty ?? inv.monoSlabQty)}
-                                className="flex items-center gap-1 px-2 py-1 text-xs text-steel-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors ml-auto">
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                </svg>
-                                Editar
-                              </button>
+                              <div className="flex items-center justify-center gap-1">
+                                {hasOverride
+                                  ? <span className="inline-block bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 font-bold px-2 py-0.5 rounded-full text-xs tabular">{fmtNum(inv.manualQty)}</span>
+                                  : <span className="text-steel-300 dark:text-steel-600 text-xs">—</span>
+                                }
+                                <button onClick={() => handleEdit(inv._id, inv.manualQty ?? inv.monoSlabQty)}
+                                  className="text-steel-300 hover:text-primary-500 transition-colors">
+                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                  </svg>
+                                </button>
+                              </div>
                             )}
                           </td>
+
+                          {/* $ Manual */}
+                          {(() => {
+                            const isEditingPay = editingPay[inv._id] !== undefined;
+                            const isSavingPay  = saving[`pay_${inv._id}`];
+                            const hasPayOverride = inv.manualPay !== null && inv.manualPay !== undefined;
+                            return (
+                              <td className="px-3 py-2">
+                                {isEditingPay ? (
+                                  <div className="flex gap-1 items-center justify-center">
+                                    <div className="relative">
+                                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-steel-400 text-xs">$</span>
+                                      <input
+                                        type="number" min="0" step="0.01"
+                                        className="w-24 border border-emerald-400 rounded-lg pl-5 pr-2 py-1 text-sm text-center text-steel-800 dark:text-steel-100 bg-white dark:bg-steel-700 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                                        value={editingPay[inv._id]}
+                                        onChange={e => setEditingPay(prev => ({ ...prev, [inv._id]: e.target.value }))}
+                                        autoFocus
+                                      />
+                                    </div>
+                                    <button onClick={() => handleSavePay(inv._id)} disabled={isSavingPay}
+                                      className="px-2 py-1 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-semibold disabled:opacity-40">
+                                      {isSavingPay ? '…' : '✓'}
+                                    </button>
+                                    <button onClick={() => handleCancelPay(inv._id)}
+                                      className="px-1.5 py-1 border border-concrete-200 dark:border-steel-600 text-steel-500 rounded-lg text-xs">✕</button>
+                                    {hasPayOverride && (
+                                      <button onClick={() => setEditingPay(prev => ({ ...prev, [inv._id]: '' }))}
+                                        className="px-1.5 py-1 text-xs text-red-400 hover:text-red-600" title="Reset">↩</button>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center justify-center gap-1">
+                                    {hasPayOverride
+                                      ? <span className="inline-block bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-bold px-2 py-0.5 rounded-full text-xs tabular">{fmt(inv.manualPay)}</span>
+                                      : <span className="text-steel-300 dark:text-steel-600 text-xs">—</span>
+                                    }
+                                    <button onClick={() => handleEditPay(inv._id, inv.manualPay ?? '')}
+                                      className="text-steel-300 hover:text-emerald-500 transition-colors">
+                                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                      </svg>
+                                    </button>
+                                  </div>
+                                )}
+                              </td>
+                            );
+                          })()}
+
+                          <td className="px-4 py-2 text-right font-semibold text-steel-900 dark:text-white tabular-nums">
+                            {fmt(inv.collaboratorPay)}
+                          </td>
+                          <td className="px-2 py-2" />
                         </tr>
                       );
                     })}
