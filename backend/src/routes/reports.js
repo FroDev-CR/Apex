@@ -233,7 +233,7 @@ reportRoutes.get('/export', async (req, res) => {
         saldoPendiente: inv.balance,
         pagado:         inv.totalAmount - inv.balance,
         esMonoSlab:     (inv.hasMonoSlab && !isPhantom) ? 'Sí' : 'No',
-        m2:             isPhantom ? 0 : (inv.monoSlabQty || 0),
+        m2:             isPhantom ? 0 : ((inv.manualQty !== null && inv.manualQty !== undefined) ? inv.manualQty : (inv.monoSlabQty || 0)),
         pagoCollab:     isPhantom ? 0 : (inv.collaboratorPay || 0),
         colaborador:    inv.collaborator?.name || 'Sin asignar',
         tarea:          isPhantom ? '' : (getWorkTypes(inv.lineItems || []).join(', ') || ''),
@@ -249,14 +249,17 @@ reportRoutes.get('/export', async (req, res) => {
       if (!bySalary.has(key)) bySalary.set(key, { colaborador: name, m2: 0, total: 0, facturas: 0, breakdown: [] });
       const g = bySalary.get(key);
       const workTypes = getWorkTypes(inv.lineItems || []);
-      g.m2       += inv.monoSlabQty || 0;
+      const effectiveSF = (inv.manualQty !== null && inv.manualQty !== undefined)
+        ? inv.manualQty
+        : (inv.monoSlabQty || 0);
+      g.m2       += effectiveSF;
       g.total    += inv.collaboratorPay || 0;
       g.facturas += 1;
       g.breakdown.push({
         docNumber:    inv.docNumber,
         customerName: inv.customerName,
         fecha:        inv.txnDate ? new Date(inv.txnDate).toLocaleDateString('es-CR') : '',
-        m2:           inv.monoSlabQty || 0,
+        m2:           effectiveSF,
         pay:          inv.collaboratorPay || 0,
         tarea:        workTypes.join(', ') || '—',
       });
