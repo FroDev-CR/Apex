@@ -234,9 +234,12 @@ reportRoutes.get('/export', async (req, res) => {
         pagado:         inv.totalAmount - inv.balance,
         esMonoSlab:     (inv.hasMonoSlab && !isPhantom) ? 'Sí' : 'No',
         m2:             isPhantom ? 0 : ((inv.manualQty !== null && inv.manualQty !== undefined) ? inv.manualQty : (inv.monoSlabQty || 0)),
+        m2Original:     isPhantom ? 0 : (inv.monoSlabQty || 0),
         pagoCollab:     isPhantom ? 0 : (inv.collaboratorPay || 0),
         colaborador:    inv.collaborator?.name || 'Sin asignar',
         tarea:          isPhantom ? '' : (getWorkTypes(inv.lineItems || []).join(', ') || ''),
+        manualQty:      inv.manualQty ?? null,
+        manualPay:      inv.manualPay ?? null,
       };
     });
 

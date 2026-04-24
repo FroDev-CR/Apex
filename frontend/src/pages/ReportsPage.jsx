@@ -906,6 +906,57 @@ function openPrintView(data) {
       <td>${i.colaborador}</td>
     </tr>`).join('');
 
+  // ── EPOs section ──────────────────────────────────────────────────────────
+  const epoInvoices = data.invoices.filter(i =>
+    i.tarea && i.tarea.toUpperCase().includes('EPO') && i.pagoCollab > 0
+  );
+  // Group by collaborator
+  const epoByCollab = new Map();
+  for (const inv of epoInvoices) {
+    const key = inv.colaborador || 'Sin asignar';
+    if (!epoByCollab.has(key)) epoByCollab.set(key, []);
+    epoByCollab.get(key).push(inv);
+  }
+  const epoRows = Array.from(epoByCollab.entries()).map(([collab, invs]) => {
+    const collabTotal = invs.reduce((s, i) => s + i.pagoCollab, 0);
+    const detailRows = invs.map((inv, bi) => {
+      const sfOverride  = inv.manualQty !== null && inv.manualQty !== undefined;
+      const payOverride = inv.manualPay !== null && inv.manualPay !== undefined;
+      const sfCell = sfOverride
+        ? `<span class="override-badge sf-badge">${fN(inv.manualQty)} SF*</span>`
+        : (inv.m2 > 0 ? fN(inv.m2) : '—');
+      const payCell = payOverride
+        ? `<span class="override-badge pay-badge">${fU(inv.manualPay)}*</span>`
+        : fU(inv.pagoCollab);
+      return `<tr class="${bi%2===0?'det-even':''}">
+        <td style="padding-left:20px;color:#475569">#${inv.factura}</td>
+        <td style="color:#475569">${inv.cliente}</td>
+        <td style="color:#475569">${inv.fecha}</td>
+        <td class="num">${sfCell}</td>
+        <td class="num money">${payCell}</td>
+      </tr>`;
+    }).join('');
+    return `
+      <tr class="epo-collab-row">
+        <td colspan="2"><b>${collab}</b></td>
+        <td></td>
+        <td class="num"><b>${fN(invs.reduce((s,i)=>s+i.m2,0))} SF</b></td>
+        <td class="num money"><b>${fU(collabTotal)}</b></td>
+      </tr>
+      ${detailRows}`;
+  }).join('');
+  const epoTotal = epoInvoices.reduce((s, i) => s + i.pagoCollab, 0);
+  const epoSection = epoInvoices.length === 0 ? '' : `
+<div class="section">
+  <div class="section-title">EPOs — Overrides Confirmados (${epoInvoices.length})</div>
+  <div style="font-size:9px;color:#64748b;margin-bottom:8px">* = valor editado manualmente por Emily</div>
+  <table>
+    <thead><tr><th>Factura</th><th>Cliente</th><th>Fecha</th><th class="num">SF</th><th class="num">Pago</th></tr></thead>
+    <tbody>${epoRows}</tbody>
+    <tfoot><tr><td colspan="3">TOTAL EPOs</td><td class="num">—</td><td class="num">${fU(epoTotal)}</td></tr></tfoot>
+  </table>
+</div>`;
+
   const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
 <title>Reporte Apex — ${per}</title>
 <style>
@@ -928,12 +979,16 @@ td{padding:5px 8px;border-bottom:1px solid #f1f5f9}
 tr.even td{background:#f8fafc}
 tr.det-even td{background:#fafafa}
 tr.collab-row td{background:#f0f4ff;border-top:2px solid #c7d2fe;padding-top:7px;padding-bottom:7px}
+tr.epo-collab-row td{background:#fef9f0;border-top:2px solid #fed7aa;padding-top:7px;padding-bottom:7px}
 td.num{text-align:right}
 td.money{font-weight:600}
 td.pending{color:#d97706;font-weight:700}
 td.paid{color:#10b981}
 tfoot tr{background:#1e293b;color:white;font-weight:900}
 .task-badge{background:#e0f2fe;color:#0369a1;padding:1px 6px;border-radius:9px;font-size:9.5px;font-weight:600;white-space:nowrap}
+.override-badge{padding:1px 6px;border-radius:9px;font-size:9.5px;font-weight:700;white-space:nowrap}
+.sf-badge{background:#fff7ed;color:#c2410c}
+.pay-badge{background:#f0fdf4;color:#166534}
 @media print{.topbar{display:none}.section{page-break-inside:avoid}}
 </style></head><body>
 <div class="topbar"><span><b>Reporte Apex Concrete</b> — ${per}</span>
@@ -960,6 +1015,8 @@ tfoot tr{background:#1e293b;color:white;font-weight:900}
     </tr></tfoot>
   </table>
 </div>
+
+${epoSection}
 
 <div class="section">
   <div class="section-title">Detalle de Facturas (${r.invoiceCount})</div>
