@@ -35,7 +35,7 @@ async function matchOrCreateFromEmployee(employeeName = '', collabMap) {
   const color = COLLAB_COLORS[collabMap.size % COLLAB_COLORS.length];
   const created = await Collaborator.findOneAndUpdate(
     { name },
-    { $setOnInsert: { name, color, isActive: true } },
+    { $set: { isActive: true }, $setOnInsert: { name, color } },
     { upsert: true, new: true, setDefaultsOnInsert: true }
   );
   collabMap.set(name.toLowerCase(), created._id);
