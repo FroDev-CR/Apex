@@ -25,10 +25,14 @@ async function matchOrCreateCollaborator(raw = '', collabMap) {
     if (normalized.includes(name) || name.includes(normalized)) return id;
   }
 
-  // Auto-create — use raw name as-is (trimmed)
+  // Auto-create — findOneAndUpdate avoids touching the unique email index
   const name = raw.trim();
   const color = COLLAB_COLORS[collabMap.size % COLLAB_COLORS.length];
-  const created = await Collaborator.create({ name, color, isActive: true });
+  const created = await Collaborator.findOneAndUpdate(
+    { name },
+    { $setOnInsert: { name, color, isActive: true } },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
   collabMap.set(name.toLowerCase(), created._id);
   console.log(`[qboSync] Auto-created collaborator: "${name}"`);
   return created._id;

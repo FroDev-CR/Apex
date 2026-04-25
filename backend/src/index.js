@@ -59,9 +59,26 @@ app.use((req, res) => {
   res.status(404).json({ error: 'Not found' });
 });
 
+async function fixIndexes() {
+  try {
+    const { Collaborator } = await import('./models/Collaborator.js');
+    const col = Collaborator.collection;
+    const indexes = await col.indexes();
+    const emailIdx = indexes.find(i => i.key?.email !== undefined);
+    if (emailIdx && !emailIdx.sparse) {
+      await col.dropIndex('email_1');
+      await col.createIndex({ email: 1 }, { unique: true, sparse: true });
+      console.log('✅ Rebuilt email_1 index as sparse');
+    }
+  } catch (e) {
+    console.warn('⚠️ Could not fix email index:', e.message);
+  }
+}
+
 async function startServer() {
   try {
     await connectDatabase();
+    await fixIndexes();
     app.listen(PORT, () => {
       console.log(`🚀 Apex backend running on port ${PORT}`);
       console.log(`📡 API: http://localhost:${PORT}/api`);
