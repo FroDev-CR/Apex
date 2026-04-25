@@ -97,17 +97,30 @@ qboRoutes.post('/sync', async (req, res) => {
 qboRoutes.get('/debug-fields', async (req, res) => {
   try {
     const { qboRequest } = await import('../config/qbo.js');
-    const data = await qboRequest('/query', {
-      query: 'SELECT * FROM Invoice ORDERBY TxnDate DESC STARTPOSITION 1 MAXRESULTS 10'
-    });
-    const invoices = data.QueryResponse?.Invoice || [];
-    const result = invoices.map(inv => ({
-      docNumber: inv.DocNumber,
-      txnDate: inv.TxnDate,
-      customFields: inv.CustomField || [],
-      privateNote: inv.PrivateNote || ''
-    }));
-    res.json(result);
+    const withFields = [];
+    let pos = 1;
+    const pageSize = 100;
+    while (withFields.length < 20) {
+      const data = await qboRequest('/query', {
+        query: `SELECT * FROM Invoice ORDERBY TxnDate DESC STARTPOSITION ${pos} MAXRESULTS ${pageSize}`
+      });
+      const invoices = data.QueryResponse?.Invoice || [];
+      if (invoices.length === 0) break;
+      for (const inv of invoices) {
+        const cf = inv.CustomField || [];
+        if (cf.some(f => f.StringValue?.trim())) {
+          withFields.push({
+            docNumber: inv.DocNumber,
+            txnDate: inv.TxnDate,
+            customFields: cf,
+            privateNote: inv.PrivateNote || ''
+          });
+        }
+      }
+      if (invoices.length < pageSize) break;
+      pos += pageSize;
+    }
+    res.json({ found: withFields.length, invoices: withFields });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
