@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { qboApi, settingsApi } from '../api';
+import CollaboratorsPage from './CollaboratorsPage';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('es-CR', { dateStyle: 'medium' }) : '—';
@@ -358,6 +359,10 @@ const TABS = [
     id: 'general', label: 'General',
     icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z',
   },
+  {
+    id: 'colaboradores', label: 'Colaboradores',
+    icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z',
+  },
 ];
 
 function SettingsPage() {
@@ -366,7 +371,7 @@ function SettingsPage() {
   return (
     <div className="max-w-3xl mx-auto">
       <div className="mb-5">
-        <h1 className="text-2xl font-bold text-steel-900 dark:text-white">Configuración</h1>
+        <h1 className="text-2xl font-display font-black tracking-tight text-steel-900 dark:text-white">Configuración</h1>
       </div>
 
       <div className="flex gap-4 items-start">
@@ -392,8 +397,9 @@ function SettingsPage() {
 
         {/* ── Content ── */}
         <div className="flex-1 min-w-0">
-          {activeTab === 'conexiones' && <ConexionesTab />}
-          {activeTab === 'general'    && <GeneralTab />}
+          {activeTab === 'conexiones'    && <ConexionesTab />}
+          {activeTab === 'general'       && <GeneralTab />}
+          {activeTab === 'colaboradores' && <CollaboratorsPage />}
         </div>
       </div>
     </div>
