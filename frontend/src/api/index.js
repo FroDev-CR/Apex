@@ -133,5 +133,6 @@ export const collaboratorsApi = {
   get: (id) => fetchApi(`/api/collaborators/${id}`),
   create: (data) => fetchApi('/api/collaborators', { method: 'POST', body: JSON.stringify(data) }),
   update: (id, data) => fetchApi(`/api/collaborators/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  delete: (id) => fetchApi(`/api/collaborators/${id}`, { method: 'DELETE' })
+  delete: (id) => fetchApi(`/api/collaborators/${id}`, { method: 'DELETE' }),
+  bulkDeactivate: (ids) => fetchApi('/api/collaborators/bulk-deactivate', { method: 'POST', body: JSON.stringify({ ids }) }),
 };

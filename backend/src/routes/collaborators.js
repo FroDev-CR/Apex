@@ -68,6 +68,23 @@ collaboratorRoutes.put('/:id', async (req, res) => {
   }
 });
 
+// POST /api/collaborators/bulk-deactivate  (bulk soft delete)
+collaboratorRoutes.post('/bulk-deactivate', async (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: 'ids array required' });
+    }
+    const result = await Collaborator.updateMany(
+      { _id: { $in: ids } },
+      { $set: { isActive: false } }
+    );
+    res.json({ deactivated: result.modifiedCount });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // DELETE /api/collaborators/:id  (soft delete)
 collaboratorRoutes.delete('/:id', async (req, res) => {
   try {

@@ -13,6 +13,7 @@ function CollaboratorsPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({ name: '', email: '', color: DEFAULT_COLORS[0] });
+  const [selected, setSelected] = useState(new Set());
 
   const fetchCollaborators = async () => {
     setLoading(true);
@@ -34,7 +35,7 @@ function CollaboratorsPage() {
   };
 
   const handleEdit = (c) => {
-    setFormData({ name: c.name, email: c.email, color: c.color });
+    setFormData({ name: c.name, email: c.email || '', color: c.color });
     setEditingId(c._id);
     setShowForm(true);
   };
@@ -61,11 +62,44 @@ function CollaboratorsPage() {
     try {
       await collaboratorsApi.delete(id);
       toast.success('Colaborador desactivado');
+      setSelected(prev => { const s = new Set(prev); s.delete(id); return s; });
       fetchCollaborators();
     } catch (err) {
       toast.error(err.message);
     }
   };
+
+  const toggleSelect = (id) => {
+    setSelected(prev => {
+      const s = new Set(prev);
+      s.has(id) ? s.delete(id) : s.add(id);
+      return s;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selected.size === collaborators.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(collaborators.map(c => c._id)));
+    }
+  };
+
+  const handleBulkDeactivate = async () => {
+    if (selected.size === 0) return;
+    if (!confirm(`¿Desactivar ${selected.size} colaborador(es) seleccionados?`)) return;
+    try {
+      const { deactivated } = await collaboratorsApi.bulkDeactivate([...selected]);
+      toast.success(`${deactivated} colaborador(es) desactivados`);
+      setSelected(new Set());
+      fetchCollaborators();
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
+  const allSelected = collaborators.length > 0 && selected.size === collaborators.length;
+  const someSelected = selected.size > 0;
 
   return (
     <div className="space-y-5">
@@ -82,6 +116,46 @@ function CollaboratorsPage() {
           + Agregar
         </button>
       </div>
+
+      {/* Bulk action bar */}
+      {!loading && collaborators.length > 0 && (
+        <div className="flex items-center gap-3 py-2">
+          <button
+            onClick={toggleSelectAll}
+            className="flex items-center gap-2 text-sm text-steel-600 hover:text-steel-900 transition-colors"
+          >
+            <span className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+              allSelected
+                ? 'bg-primary-500 border-primary-500'
+                : someSelected
+                ? 'bg-primary-200 border-primary-400'
+                : 'border-concrete-300'
+            }`}>
+              {allSelected && (
+                <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+              {!allSelected && someSelected && (
+                <span className="w-2 h-0.5 bg-primary-500 rounded" />
+              )}
+            </span>
+            {allSelected ? 'Deseleccionar todos' : 'Seleccionar todos'}
+          </button>
+
+          {someSelected && (
+            <button
+              onClick={handleBulkDeactivate}
+              className="ml-auto flex items-center gap-2 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-sm font-semibold transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              Desactivar {selected.size} seleccionados
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Form modal */}
       {showForm && (
@@ -162,10 +236,28 @@ function CollaboratorsPage() {
           {collaborators.map(c => (
             <div
               key={c._id}
-              className={`bg-white dark:bg-steel-800 rounded-xl border border-concrete-200 dark:border-steel-700 shadow-steel p-5 ${!c.isActive ? 'opacity-50' : ''}`}
+              onClick={() => toggleSelect(c._id)}
+              className={`bg-white dark:bg-steel-800 rounded-xl border shadow-steel p-5 cursor-pointer transition-all ${
+                selected.has(c._id)
+                  ? 'border-primary-400 ring-2 ring-primary-200'
+                  : 'border-concrete-200 dark:border-steel-700'
+              } ${!c.isActive ? 'opacity-50' : ''}`}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
+                  {/* Checkbox */}
+                  <div className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center transition-colors ${
+                    selected.has(c._id)
+                      ? 'bg-primary-500 border-primary-500'
+                      : 'border-concrete-300'
+                  }`}>
+                    {selected.has(c._id) && (
+                      <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </div>
+
                   <div
                     className="w-11 h-11 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0"
                     style={{ backgroundColor: c.color }}
@@ -178,7 +270,7 @@ function CollaboratorsPage() {
                   </div>
                 </div>
 
-                <div className="flex gap-1 flex-shrink-0">
+                <div className="flex gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
                   <button onClick={() => handleEdit(c)}
                     className="p-1.5 text-steel-300 hover:text-steel-600 transition-colors">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
