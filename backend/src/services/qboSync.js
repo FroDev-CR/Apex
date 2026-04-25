@@ -61,7 +61,7 @@ async function mapQBOInvoice(qbo, collabMap) {
     const fieldNames = customFields.map(f => `"${f.Name}"="${f.StringValue}"`).join(', ');
     console.log(`[qboSync] Invoice #${qbo.DocNumber} CustomFields: ${fieldNames}`);
   }
-  const employeeField = customFields.find(f => f.Name?.toLowerCase().includes('employee'))?.StringValue?.trim() || '';
+  const employeeField = customFields.find(f => f.Name?.toLowerCase().includes('employ'))?.StringValue?.trim() || '';
   const collaboratorRawText = employeeField || privateNote;
   // Employee field → auto-create if not found. privateNote → match only, never auto-create.
   const collaboratorId = employeeField
