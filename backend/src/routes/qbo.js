@@ -93,3 +93,23 @@ qboRoutes.post('/sync', async (req, res) => {
   }
 });
 
+// ─── Debug: raw custom fields from latest QBO invoices ────────────────────
+qboRoutes.get('/debug-fields', async (req, res) => {
+  try {
+    const { qboRequest } = await import('../config/qbo.js');
+    const data = await qboRequest('/query', {
+      query: 'SELECT * FROM Invoice ORDERBY TxnDate DESC STARTPOSITION 1 MAXRESULTS 10'
+    });
+    const invoices = data.QueryResponse?.Invoice || [];
+    const result = invoices.map(inv => ({
+      docNumber: inv.DocNumber,
+      txnDate: inv.TxnDate,
+      customFields: inv.CustomField || [],
+      privateNote: inv.PrivateNote || ''
+    }));
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
