@@ -73,7 +73,7 @@ async function mapQBOInvoice(qbo, collabMap) {
   const billingCompany = qbo.BillAddr?.Line1 || '';
   const payFields = computeInvoicePayFields(lineItems);
 
-  return {
+  const base = {
     qboId: qbo.Id,
     docNumber: qbo.DocNumber || '',
     txnDate: qbo.TxnDate ? new Date(qbo.TxnDate) : null,
@@ -87,11 +87,14 @@ async function mapQBOInvoice(qbo, collabMap) {
     builderNumber,
     estado,
     privateNote,
-    collaborator: collaboratorId,
     collaboratorRaw: collaboratorRawText,
     ...payFields,
     syncedAt: new Date()
   };
+  // Only overwrite collaborator when we actually resolved one — never overwrite with null.
+  // This preserves manual assignments on invoices that have no Employee field in QBO.
+  if (collaboratorId !== null) base.collaborator = collaboratorId;
+  return base;
 }
 
 export async function syncQBOInvoices() {
