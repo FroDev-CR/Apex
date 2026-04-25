@@ -11,16 +11,30 @@ function buildCollaboratorMap(collaborators) {
   return map;
 }
 
-function matchCollaborator(raw = '', collabMap) {
+const COLLAB_COLORS = [
+  '#f97316','#3b82f6','#10b981','#8b5cf6','#ef4444',
+  '#f59e0b','#06b6d4','#ec4899','#84cc16','#6366f1',
+];
+
+async function matchOrCreateCollaborator(raw = '', collabMap) {
   if (!raw) return null;
   const normalized = raw.toLowerCase().trim();
+
+  // Try existing match
   for (const [name, id] of collabMap.entries()) {
-    if (normalized.includes(name)) return id;
+    if (normalized.includes(name) || name.includes(normalized)) return id;
   }
-  return null;
+
+  // Auto-create — use raw name as-is (trimmed)
+  const name = raw.trim();
+  const color = COLLAB_COLORS[collabMap.size % COLLAB_COLORS.length];
+  const created = await Collaborator.create({ name, color, isActive: true });
+  collabMap.set(name.toLowerCase(), created._id);
+  console.log(`[qboSync] Auto-created collaborator: "${name}"`);
+  return created._id;
 }
 
-function mapQBOInvoice(qbo, collabMap) {
+async function mapQBOInvoice(qbo, collabMap) {
   const lineItems = (qbo.Line || [])
     .filter(l => l.DetailType === 'SalesItemLineDetail')
     .map(l => ({
@@ -34,20 +48,17 @@ function mapQBOInvoice(qbo, collabMap) {
 
   const privateNote = qbo.PrivateNote || '';
   const customFields = qbo.CustomField || [];
-  // Log custom field names to help debug field name mismatches
   if (customFields.length > 0) {
     const fieldNames = customFields.map(f => `"${f.Name}"="${f.StringValue}"`).join(', ');
     console.log(`[qboSync] Invoice #${qbo.DocNumber} CustomFields: ${fieldNames}`);
   }
-  const employeeField = customFields.find(f => f.Name?.toLowerCase().includes('employee'))?.StringValue || '';
+  const employeeField = customFields.find(f => f.Name?.toLowerCase().includes('employee'))?.StringValue?.trim() || '';
   const collaboratorRawText = employeeField || privateNote;
-  const collaboratorId = matchCollaborator(collaboratorRawText, collabMap);
+  const collaboratorId = await matchOrCreateCollaborator(collaboratorRawText, collabMap);
   const builderNumber = customFields.find(f => f.Name?.toLowerCase().includes('builder'))?.StringValue || '';
   const estado = customFields.find(f => f.Name?.toLowerCase() === 'estado')?.StringValue || '';
 
-  const billAddr = qbo.BillAddr || {};
-  const billingCompany = billAddr.Line1 || '';
-
+  const billingCompany = qbo.BillAddr?.Line1 || '';
   const payFields = computeInvoicePayFields(lineItems);
 
   return {
@@ -91,7 +102,7 @@ export async function syncQBOInvoices() {
     if (invoices.length === 0) break;
 
     for (const qboInv of invoices) {
-      const mapped = mapQBOInvoice(qboInv, collabMap);
+      const mapped = await mapQBOInvoice(qboInv, collabMap);
       const existing = await Invoice.exists({ qboId: mapped.qboId });
       await Invoice.findOneAndUpdate(
         { qboId: mapped.qboId },
