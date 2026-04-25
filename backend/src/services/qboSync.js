@@ -16,17 +16,22 @@ const COLLAB_COLORS = [
   '#f59e0b','#06b6d4','#ec4899','#84cc16','#6366f1',
 ];
 
-async function matchOrCreateCollaborator(raw = '', collabMap) {
+function matchCollaborator(raw = '', collabMap) {
   if (!raw) return null;
   const normalized = raw.toLowerCase().trim();
-
-  // Try existing match
   for (const [name, id] of collabMap.entries()) {
     if (normalized.includes(name) || name.includes(normalized)) return id;
   }
+  return null;
+}
 
-  // Auto-create — findOneAndUpdate avoids touching the unique email index
-  const name = raw.trim();
+// Only called when Employee custom field is explicitly set — trusted person name
+async function matchOrCreateFromEmployee(employeeName = '', collabMap) {
+  if (!employeeName) return null;
+  const existing = matchCollaborator(employeeName, collabMap);
+  if (existing) return existing;
+
+  const name = employeeName.trim();
   const color = COLLAB_COLORS[collabMap.size % COLLAB_COLORS.length];
   const created = await Collaborator.findOneAndUpdate(
     { name },
@@ -58,7 +63,10 @@ async function mapQBOInvoice(qbo, collabMap) {
   }
   const employeeField = customFields.find(f => f.Name?.toLowerCase().includes('employee'))?.StringValue?.trim() || '';
   const collaboratorRawText = employeeField || privateNote;
-  const collaboratorId = await matchOrCreateCollaborator(collaboratorRawText, collabMap);
+  // Employee field → auto-create if not found. privateNote → match only, never auto-create.
+  const collaboratorId = employeeField
+    ? await matchOrCreateFromEmployee(employeeField, collabMap)
+    : matchCollaborator(privateNote, collabMap);
   const builderNumber = customFields.find(f => f.Name?.toLowerCase().includes('builder'))?.StringValue || '';
   const estado = customFields.find(f => f.Name?.toLowerCase() === 'estado')?.StringValue || '';
 
