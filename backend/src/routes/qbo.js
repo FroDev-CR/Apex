@@ -121,6 +121,16 @@ qboRoutes.get('/debug-fields', async (req, res) => {
       });
     } catch (e) { results.fieldDefinitions = { error: e.message }; }
 
+    // 5. Fetch Customer 245 (linked to invoice 2207) — Employee field is Customer category
+    try {
+      results.customer245 = await qboRequest('/customer/245');
+    } catch (e) { results.customer245 = { error: e.message }; }
+
+    // 6. Customer with allfields
+    try {
+      results.customer245AllFields = await qboRequest('/customer/245', { include: 'allfields' });
+    } catch (e) { results.customer245AllFields = { error: e.message }; }
+
     res.json(results);
   } catch (err) {
     res.status(500).json({ error: err.message });
