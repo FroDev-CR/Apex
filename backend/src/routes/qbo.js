@@ -155,6 +155,14 @@ qboRoutes.get('/debug-fields', async (req, res) => {
       results.preferences = await qboRequest('/preferences');
     } catch (e) { results.preferences = { error: e.message }; }
 
+    // 11. Customer Notes field check (Internal customer notes)
+    try {
+      const r = await qboRequest('/query', {
+        query: "SELECT Id, DisplayName, Notes FROM Customer WHERE Notes != '' MAXRESULTS 20"
+      });
+      results.customersWithNotes = r.QueryResponse?.Customer || [];
+    } catch (e) { results.customersWithNotes = { error: e.message }; }
+
     res.json(results);
   } catch (err) {
     res.status(500).json({ error: err.message });
