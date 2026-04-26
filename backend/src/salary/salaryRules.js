@@ -94,7 +94,10 @@ export function calculatePeriodSalary(invoices = []) {
   const breakdown = [];
 
   for (const inv of invoices) {
-    const qty = inv.monoSlabQty || 0;
+    // Effective SF respects manual override (Emily's correction in UI)
+    const qty = (inv.manualQty !== null && inv.manualQty !== undefined)
+      ? inv.manualQty
+      : (inv.monoSlabQty || 0);
     const pay = inv.collaboratorPay || 0;
     const workTypes = getWorkTypes(inv.lineItems || []);
     total += pay;

@@ -11,18 +11,23 @@ const fmtPct = (n) => `${(n ?? 0).toFixed(1)}%`;
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('es-CR', { dateStyle: 'medium' }) : '—';
 
 // ─── Period presets ────────────────────────────────────────────────────────
+// fmtLocal returns YYYY-MM-DD using local timezone components (not UTC).
+// Avoids ISO-slice bugs where evening hours roll into next UTC day.
+const fmtLocal = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+
 function getPreset(preset) {
   const now = new Date(), y = now.getFullYear(), m = now.getMonth();
   switch (preset) {
     case 'today_yesterday': {
-      const today = now.toISOString().slice(0,10);
-      const yest  = new Date(now - 86400000).toISOString().slice(0,10);
+      const today = fmtLocal(now);
+      const yest  = fmtLocal(new Date(now - 86400000));
       return { dateFrom: yest, dateTo: today };
     }
-    case 'this_month': return { dateFrom: new Date(y,m,1).toISOString().slice(0,10), dateTo: new Date(y,m+1,0).toISOString().slice(0,10) };
-    case 'last_month': return { dateFrom: new Date(y,m-1,1).toISOString().slice(0,10), dateTo: new Date(y,m,0).toISOString().slice(0,10) };
+    case 'this_month': return { dateFrom: fmtLocal(new Date(y,m,1)),   dateTo: fmtLocal(new Date(y,m+1,0)) };
+    case 'last_month': return { dateFrom: fmtLocal(new Date(y,m-1,1)), dateTo: fmtLocal(new Date(y,m,0)) };
     case 'this_year':  return { dateFrom: `${y}-01-01`, dateTo: `${y}-12-31` };
-    case 'last_90':    return { dateFrom: new Date(now - 90*86400000).toISOString().slice(0,10), dateTo: now.toISOString().slice(0,10) };
+    case 'last_90':    return { dateFrom: fmtLocal(new Date(now - 90*86400000)), dateTo: fmtLocal(now) };
     default:           return { dateFrom: '', dateTo: '' };
   }
 }

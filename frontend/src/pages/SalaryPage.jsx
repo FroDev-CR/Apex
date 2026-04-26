@@ -14,10 +14,11 @@ function getCurrentMonthRange() {
 }
 
 /**
- * Format date for input[type="date"]
+ * Format date for input[type="date"] using local timezone components.
+ * Avoids the toISOString().slice() bug in evening hours where UTC rolls forward.
  */
 function formatDateForInput(date) {
-  return date.toISOString().split('T')[0];
+  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
 }
 
 function SalaryPage() {
