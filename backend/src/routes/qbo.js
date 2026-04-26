@@ -131,6 +131,30 @@ qboRoutes.get('/debug-fields', async (req, res) => {
       results.customer245AllFields = await qboRequest('/customer/245', { include: 'allfields' });
     } catch (e) { results.customer245AllFields = { error: e.message }; }
 
+    // 7. Parent customer
+    try {
+      results.customer1 = await qboRequest('/customer/1');
+    } catch (e) { results.customer1 = { error: e.message }; }
+
+    // 8. SQL query Customer with all columns
+    try {
+      results.customerSQL = await qboRequest('/query', {
+        query: "SELECT * FROM Customer WHERE Id='245'"
+      });
+    } catch (e) { results.customerSQL = { error: e.message }; }
+
+    // 9. SQL query Customer parent
+    try {
+      results.customerSQLParent = await qboRequest('/query', {
+        query: "SELECT * FROM Customer WHERE Id='1'"
+      });
+    } catch (e) { results.customerSQLParent = { error: e.message }; }
+
+    // 10. Preferences (lists configured custom fields)
+    try {
+      results.preferences = await qboRequest('/preferences');
+    } catch (e) { results.preferences = { error: e.message }; }
+
     res.json(results);
   } catch (err) {
     res.status(500).json({ error: err.message });
