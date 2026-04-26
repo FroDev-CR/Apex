@@ -93,14 +93,35 @@ qboRoutes.post('/sync', async (req, res) => {
   }
 });
 
-// ─── Debug: dump full raw invoice 2207 ─────────────────────────────────────
+// ─── Debug: try multiple approaches to get hidden custom fields ───────────
 qboRoutes.get('/debug-fields', async (req, res) => {
   try {
     const { qboRequest } = await import('../config/qbo.js');
-    const data = await qboRequest('/query', {
-      query: "SELECT * FROM Invoice WHERE DocNumber = '2207'"
-    });
-    res.json(data);
+    const results = {};
+
+    // 1. Direct invoice fetch (uses default minorversion 70)
+    try {
+      results.directFetch = await qboRequest('/invoice/2429');
+    } catch (e) { results.directFetch = { error: e.message }; }
+
+    // 2. Try minorversion 75
+    try {
+      results.mv75 = await qboRequest('/invoice/2429', { minorversion: 75 });
+    } catch (e) { results.mv75 = { error: e.message }; }
+
+    // 3. Try minorversion 73 with include=allfields
+    try {
+      results.mv73AllFields = await qboRequest('/invoice/2429', { minorversion: 73, include: 'allfields' });
+    } catch (e) { results.mv73AllFields = { error: e.message }; }
+
+    // 4. CustomFieldDefinition endpoint (lists field definitions)
+    try {
+      results.fieldDefinitions = await qboRequest('/query', {
+        query: 'SELECT * FROM CustomFieldDefinition'
+      });
+    } catch (e) { results.fieldDefinitions = { error: e.message }; }
+
+    res.json(results);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
