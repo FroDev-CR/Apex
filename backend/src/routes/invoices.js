@@ -296,20 +296,3 @@ invoiceRoutes.patch('/:id/collaborator', async (req, res) => {
   }
 });
 
-// ─── POST /api/invoices/bulk-assign ────────────────────────────────────────
-// Bulk-assign a collaborator to many invoices at once
-invoiceRoutes.post('/bulk-assign', async (req, res) => {
-  try {
-    const { invoiceIds, collaboratorId } = req.body;
-    if (!Array.isArray(invoiceIds) || invoiceIds.length === 0) {
-      return res.status(400).json({ error: 'invoiceIds array required' });
-    }
-    const result = await Invoice.updateMany(
-      { _id: { $in: invoiceIds } },
-      { $set: { collaborator: collaboratorId || null } }
-    );
-    res.json({ updated: result.modifiedCount });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});

@@ -76,12 +76,7 @@ export const invoicesApi = {
       method: 'PATCH',
       body: JSON.stringify({ pay })
     }),
-  recalculate: () => fetchApi('/api/invoices/recalculate', { method: 'POST' }),
-  bulkAssign: (invoiceIds, collaboratorId) =>
-    fetchApi('/api/invoices/bulk-assign', {
-      method: 'POST',
-      body: JSON.stringify({ invoiceIds, collaboratorId })
-    })
+  recalculate: () => fetchApi('/api/invoices/recalculate', { method: 'POST' })
 };
 
 // ─── Reports ────────────────────────────────────────────────────────────────

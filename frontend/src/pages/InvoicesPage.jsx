@@ -193,9 +193,6 @@ function InvoicesPage() {
     page: 1,
     limit: 50
   });
-  const [selected, setSelected] = useState(new Set());
-  const [bulkCollab, setBulkCollab] = useState('');
-  const [bulkAssigning, setBulkAssigning] = useState(false);
 
   const hasActiveFilters = filters.customer || filters.hasMonoSlab || filters.unpaidOnly || filters.dateFrom || filters.dateTo;
 
@@ -226,34 +223,6 @@ function InvoicesPage() {
 
   const setFilter = (key, value) => setFilters(f => ({ ...f, [key]: value, page: 1 }));
   const clearFilters = () => setFilters({ customer: '', hasMonoSlab: '', unpaidOnly: '', dateFrom: '', dateTo: '', page: 1, limit: 50 });
-
-  const toggleSelect = (id) => {
-    setSelected(prev => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  };
-  const toggleSelectAll = () => {
-    setSelected(prev => prev.size === invoices.length ? new Set() : new Set(invoices.map(i => i._id)));
-  };
-  const clearSelection = () => setSelected(new Set());
-
-  const handleBulkAssign = async () => {
-    if (selected.size === 0) return;
-    setBulkAssigning(true);
-    try {
-      const result = await invoicesApi.bulkAssign(Array.from(selected), bulkCollab || null);
-      toast.success(`${result.updated} facturas actualizadas`);
-      clearSelection();
-      setBulkCollab('');
-      fetchInvoices();
-    } catch (err) {
-      toast.error(err.message);
-    } finally {
-      setBulkAssigning(false);
-    }
-  };
 
   return (
     <div className="space-y-4">
@@ -392,14 +361,6 @@ function InvoicesPage() {
             <table className="w-full text-sm min-w-[600px]">
               <thead className="bg-concrete-50 dark:bg-steel-900 border-b border-concrete-200 dark:border-steel-700">
                 <tr className="text-xs text-steel-400 uppercase tracking-wide">
-                  <th className="px-3 py-3 w-10">
-                    <input
-                      type="checkbox"
-                      checked={invoices.length > 0 && selected.size === invoices.length}
-                      onChange={toggleSelectAll}
-                      className="w-4 h-4 rounded border-concrete-300 text-primary-600 focus:ring-primary-500"
-                    />
-                  </th>
                   <th className="text-left px-4 py-3 font-semibold">#</th>
                   <th className="text-left px-4 py-3 font-semibold">{t('col_client')}</th>
                   <th className="text-left px-4 py-3 font-semibold hidden md:table-cell">{t('col_date')}</th>
@@ -415,16 +376,8 @@ function InvoicesPage() {
                   <tr
                     key={inv._id}
                     onClick={() => setSelectedInvoice(inv)}
-                    className={`hover:bg-concrete-50 dark:hover:bg-steel-700 cursor-pointer transition-colors ${selected.has(inv._id) ? 'bg-primary-50/50' : ''}`}
+                    className="hover:bg-concrete-50 dark:hover:bg-steel-700 cursor-pointer transition-colors"
                   >
-                    <td className="px-3 py-3 w-10" onClick={e => e.stopPropagation()}>
-                      <input
-                        type="checkbox"
-                        checked={selected.has(inv._id)}
-                        onChange={() => toggleSelect(inv._id)}
-                        className="w-4 h-4 rounded border-concrete-300 text-primary-600 focus:ring-primary-500"
-                      />
-                    </td>
                     <td className="px-4 py-3 font-mono text-steel-700 dark:text-steel-200 font-medium">#{inv.docNumber}</td>
                     <td className="px-4 py-3">
                       <div className="font-medium text-steel-900 dark:text-white truncate max-w-[180px]">{inv.customerName}</div>
