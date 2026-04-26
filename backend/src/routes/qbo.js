@@ -93,34 +93,14 @@ qboRoutes.post('/sync', async (req, res) => {
   }
 });
 
-// ─── Debug: raw custom fields from latest QBO invoices ────────────────────
+// ─── Debug: dump full raw invoice 2207 ─────────────────────────────────────
 qboRoutes.get('/debug-fields', async (req, res) => {
   try {
     const { qboRequest } = await import('../config/qbo.js');
-    const withFields = [];
-    let pos = 1;
-    const pageSize = 100;
-    while (withFields.length < 20) {
-      const data = await qboRequest('/query', {
-        query: `SELECT * FROM Invoice ORDERBY TxnDate DESC STARTPOSITION ${pos} MAXRESULTS ${pageSize}`
-      });
-      const invoices = data.QueryResponse?.Invoice || [];
-      if (invoices.length === 0) break;
-      for (const inv of invoices) {
-        const cf = inv.CustomField || [];
-        if (cf.some(f => f.StringValue?.trim())) {
-          withFields.push({
-            docNumber: inv.DocNumber,
-            txnDate: inv.TxnDate,
-            customFields: cf,
-            privateNote: inv.PrivateNote || ''
-          });
-        }
-      }
-      if (invoices.length < pageSize) break;
-      pos += pageSize;
-    }
-    res.json({ found: withFields.length, invoices: withFields });
+    const data = await qboRequest('/query', {
+      query: "SELECT * FROM Invoice WHERE DocNumber = '2207'"
+    });
+    res.json(data);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
