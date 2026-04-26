@@ -8,7 +8,7 @@ import { useLanguage } from '../context/LanguageContext';
 const fmt    = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n ?? 0);
 const fmtNum = (n) => new Intl.NumberFormat('en-US').format(n ?? 0);
 const fmtPct = (n) => `${(n ?? 0).toFixed(1)}%`;
-const fmtDate = (d) => d ? new Date(d).toLocaleDateString('es-CR', { dateStyle: 'medium' }) : '—';
+const fmtDate = (d) => d ? new Date(d).toLocaleDateString('es-CR', { dateStyle: 'medium', timeZone: 'UTC' }) : '—';
 
 // ─── Period presets ────────────────────────────────────────────────────────
 // fmtLocal returns YYYY-MM-DD using local timezone components (not UTC).

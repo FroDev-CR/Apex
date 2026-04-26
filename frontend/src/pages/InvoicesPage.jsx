@@ -6,7 +6,7 @@ import { useLanguage } from '../context/LanguageContext';
 // ─── Helpers ───────────────────────────────────────────────────────────────
 const fmt = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n ?? 0);
 const fmtNum = (n) => new Intl.NumberFormat('en-US').format(n ?? 0);
-const fmtDate = (d) => d ? new Date(d).toLocaleDateString('es-CR', { dateStyle: 'medium' }) : '—';
+const fmtDate = (d) => d ? new Date(d).toLocaleDateString('es-CR', { dateStyle: 'medium', timeZone: 'UTC' }) : '—';
 
 // ─── Status badge ──────────────────────────────────────────────────────────
 function EstadoBadge({ estado }) {
