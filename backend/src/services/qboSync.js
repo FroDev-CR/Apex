@@ -43,7 +43,7 @@ async function matchOrCreateFromEmployee(employeeName = '', collabMap) {
   return created._id;
 }
 
-async function mapQBOInvoice(qbo, collabMap) {
+async function mapQBOInvoice(qbo, collabMap, customerNotesMap) {
   const lineItems = (qbo.Line || [])
     .filter(l => l.DetailType === 'SalesItemLineDetail')
     .map(l => ({
@@ -57,13 +57,12 @@ async function mapQBOInvoice(qbo, collabMap) {
 
   const privateNote = qbo.PrivateNote || '';
   const customFields = qbo.CustomField || [];
-  if (customFields.length > 0) {
-    const fieldNames = customFields.map(f => `"${f.Name}"="${f.StringValue}"`).join(', ');
-    console.log(`[qboSync] Invoice #${qbo.DocNumber} CustomFields: ${fieldNames}`);
-  }
-  const employeeField = customFields.find(f => f.Name?.toLowerCase().includes('employ'))?.StringValue?.trim() || '';
+  // Customer.Notes (Internal customer notes in QBO UI) — primary source for collaborator
+  const customerNotes = customerNotesMap?.get(qbo.CustomerRef?.value) || '';
+  const employeeField = customerNotes
+    || customFields.find(f => f.Name?.toLowerCase().includes('employ'))?.StringValue?.trim()
+    || '';
   const collaboratorRawText = employeeField || privateNote;
-  // Employee field → auto-create if not found. privateNote → match only, never auto-create.
   const collaboratorId = employeeField
     ? await matchOrCreateFromEmployee(employeeField, collabMap)
     : matchCollaborator(privateNote, collabMap);
@@ -97,11 +96,31 @@ async function mapQBOInvoice(qbo, collabMap) {
   return base;
 }
 
+async function buildCustomerNotesMap() {
+  const map = new Map();
+  let startPosition = 1;
+  const pageSize = 1000;
+  while (true) {
+    const data = await qboRequest('/query', {
+      query: `SELECT Id, Notes FROM Customer STARTPOSITION ${startPosition} MAXRESULTS ${pageSize}`
+    });
+    const customers = data.QueryResponse?.Customer || [];
+    for (const c of customers) {
+      if (c.Notes && c.Notes.trim()) map.set(c.Id, c.Notes.trim());
+    }
+    if (customers.length < pageSize) break;
+    startPosition += pageSize;
+  }
+  console.log(`[qboSync] Loaded ${map.size} customers with Notes`);
+  return map;
+}
+
 export async function syncQBOInvoices() {
   console.log('🔄 [qboSync] Starting QBO invoice sync...');
 
   const collaborators = await Collaborator.find({ isActive: true });
   const collabMap = buildCollaboratorMap(collaborators);
+  const customerNotesMap = await buildCustomerNotesMap();
 
   let startPosition = 1;
   const pageSize = 100;
@@ -117,7 +136,7 @@ export async function syncQBOInvoices() {
     if (invoices.length === 0) break;
 
     for (const qboInv of invoices) {
-      const mapped = await mapQBOInvoice(qboInv, collabMap);
+      const mapped = await mapQBOInvoice(qboInv, collabMap, customerNotesMap);
       const existing = await Invoice.exists({ qboId: mapped.qboId });
       await Invoice.findOneAndUpdate(
         { qboId: mapped.qboId },
