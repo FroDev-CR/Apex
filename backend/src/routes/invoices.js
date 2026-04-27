@@ -215,6 +215,12 @@ invoiceRoutes.post('/recalculate', async (req, res) => {
 
     for (const inv of invoices) {
       const payFields = computeInvoicePayFields(inv.lineItems || []);
+      // Preserve manual override on collaboratorPay
+      if (inv.manualPay !== null && inv.manualPay !== undefined) {
+        payFields.collaboratorPay = inv.manualPay;
+      } else if (inv.manualQty !== null && inv.manualQty !== undefined) {
+        payFields.collaboratorPay = inv.manualQty * 1.00;
+      }
       const changed =
         inv.hasMonoSlab !== payFields.hasMonoSlab ||
         inv.monoSlabQty !== payFields.monoSlabQty ||

@@ -124,6 +124,16 @@ export const settingsApi = {
   patch: (data) => fetchApi('/api/settings', { method: 'PATCH', body: JSON.stringify(data) }),
 };
 
+// ─── Manual Salary Entries ─────────────────────────────────────────────────
+export const manualEntriesApi = {
+  list: (params = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return fetchApi(`/api/manual-entries${query ? `?${query}` : ''}`);
+  },
+  create: (data) => fetchApi('/api/manual-entries', { method: 'POST', body: JSON.stringify(data) }),
+  delete: (id)   => fetchApi(`/api/manual-entries/${id}`, { method: 'DELETE' }),
+};
+
 // ─── Collaborators ──────────────────────────────────────────────────────────
 export const collaboratorsApi = {
   list: (params = {}) => {

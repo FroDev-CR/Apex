@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { Invoice } from '../models/Invoice.js';
 import { Collaborator } from '../models/Collaborator.js';
+import { ManualEntry } from '../models/ManualEntry.js';
 import { calculatePeriodSalary, getWorkTypes } from '../salary/salaryRules.js';
 
 export const reportRoutes = Router();
@@ -32,6 +33,13 @@ reportRoutes.get('/salary', async (req, res) => {
       .populate('collaborator', 'name color email')
       .sort({ txnDate: -1 });
 
+    // Manual entries (off-invoice payments)
+    const manualFilter = { ...dateFilter(dateFrom, dateTo) };
+    if (collaboratorId) manualFilter.collaborator = collaboratorId;
+    const manualEntries = await ManualEntry.find(manualFilter)
+      .populate('collaborator', 'name color email')
+      .sort({ txnDate: -1 });
+
     // Group by collaborator (null = sin asignar)
     const byCollab = new Map();
     for (const inv of invoices) {
@@ -39,21 +47,42 @@ reportRoutes.get('/salary', async (req, res) => {
       if (!byCollab.has(key)) {
         byCollab.set(key, {
           collaborator: inv.collaborator || null,
-          invoices: []
+          invoices: [],
+          manualEntries: []
         });
       }
       byCollab.get(key).invoices.push(inv);
     }
+    for (const entry of manualEntries) {
+      const key = entry.collaborator ? entry.collaborator._id.toString() : '__unassigned__';
+      if (!byCollab.has(key)) {
+        byCollab.set(key, {
+          collaborator: entry.collaborator || null,
+          invoices: [],
+          manualEntries: []
+        });
+      }
+      byCollab.get(key).manualEntries.push(entry);
+    }
 
     const results = [];
-    for (const { collaborator, invoices: collabInvoices } of byCollab.values()) {
+    for (const { collaborator, invoices: collabInvoices, manualEntries: collabEntries } of byCollab.values()) {
       const { total, totalQty, breakdown } = calculatePeriodSalary(collabInvoices);
+      const manualTotal = collabEntries.reduce((s, e) => s + (e.amount || 0), 0);
       results.push({
         collaborator,
-        totalPay: total,
+        totalPay: total + manualTotal,
+        invoiceTotal: total,
+        manualTotal,
         totalM2: totalQty,
         invoiceCount: collabInvoices.length,
-        breakdown
+        breakdown,
+        manualEntries: collabEntries.map(e => ({
+          _id: e._id,
+          amount: e.amount,
+          reason: e.reason,
+          txnDate: e.txnDate
+        }))
       });
     }
 
@@ -212,10 +241,16 @@ reportRoutes.get('/export', async (req, res) => {
       .populate('collaborator', 'name color')
       .sort({ txnDate: -1 });
 
+    const manualEntries = await ManualEntry.find(filter)
+      .populate('collaborator', 'name color')
+      .sort({ txnDate: -1 });
+
+    const manualTotal = manualEntries.reduce((s, e) => s + (e.amount || 0), 0);
+
     // ── Resumen general ──
     const totalRevenue    = invoices.reduce((s, i) => s + i.totalAmount, 0);
     const totalReceivable = invoices.reduce((s, i) => s + i.balance, 0);
-    const totalCollabCost = invoices.reduce((s, i) => s + (i.collaboratorPay || 0), 0);
+    const totalCollabCost = invoices.reduce((s, i) => s + (i.collaboratorPay || 0), 0) + manualTotal;
     const totalM2         = invoices.reduce((s, i) => s + (i.monoSlabQty || 0), 0);
     const grossMargin     = totalRevenue - totalCollabCost;
 
@@ -270,13 +305,31 @@ reportRoutes.get('/export', async (req, res) => {
         tarea:        workTypes.join(', ') || '—',
       });
     }
+    // Merge manual entries into per-collaborator salary rows
+    for (const entry of manualEntries) {
+      const key  = entry.collaborator?._id?.toString() || '__unassigned__';
+      const name = entry.collaborator?.name || 'Sin asignar';
+      if (!bySalary.has(key)) bySalary.set(key, { colaborador: name, m2: 0, total: 0, facturas: 0, breakdown: [], manualEntries: [], manualTotal: 0 });
+      const g = bySalary.get(key);
+      if (!g.manualEntries) g.manualEntries = [];
+      g.manualEntries.push({
+        fecha:  entry.txnDate ? new Date(entry.txnDate).toLocaleDateString('es-CR') : '',
+        razon:  entry.reason || '',
+        monto:  entry.amount || 0,
+      });
+      g.manualTotal = (g.manualTotal || 0) + (entry.amount || 0);
+      g.total += entry.amount || 0;
+    }
+
     const salaryRows = Array.from(bySalary.values())
+      .map(s => ({ ...s, manualEntries: s.manualEntries || [], manualTotal: s.manualTotal || 0 }))
       .sort((a, b) => b.total - a.total);
 
     res.json({
       period: { dateFrom, dateTo },
       resumen: { totalRevenue, totalReceivable, totalCollabCost, totalM2, grossMargin,
-                 invoiceCount: invoices.length, marginPct: totalRevenue > 0 ? (grossMargin / totalRevenue) * 100 : 0 },
+                 invoiceCount: invoices.length, manualTotal,
+                 marginPct: totalRevenue > 0 ? (grossMargin / totalRevenue) * 100 : 0 },
       invoices: invoiceRows,
       salaries: salaryRows,
     });
@@ -291,14 +344,19 @@ reportRoutes.get('/epos', async (req, res) => {
   try {
     const { dateFrom, dateTo } = req.query;
     const filter = {
-      'lineItems': {
-        $elemMatch: {
-          $or: [
-            { productService: { $regex: 'EPO', $options: 'i' } },
-            { description: { $regex: 'EPO', $options: 'i' } }
-          ]
-        }
-      },
+      $or: [
+        {
+          'lineItems': {
+            $elemMatch: {
+              $or: [
+                { productService: { $regex: 'EPO', $options: 'i' } },
+                { description: { $regex: 'EPO', $options: 'i' } }
+              ]
+            }
+          }
+        },
+        { privateNote: { $regex: 'EPO', $options: 'i' } }
+      ],
       ...dateFilter(dateFrom, dateTo)
     };
 
@@ -348,13 +406,15 @@ reportRoutes.get('/overview', async (req, res) => {
     const { dateFrom, dateTo } = req.query;
     const filter = dateFilter(dateFrom, dateTo);
 
-    const [invoices, collabCount] = await Promise.all([
+    const [invoices, collabCount, manualEntries] = await Promise.all([
       Invoice.find(filter),
-      Collaborator.countDocuments({ isActive: true })
+      Collaborator.countDocuments({ isActive: true }),
+      ManualEntry.find(filter)
     ]);
 
+    const manualTotal = manualEntries.reduce((s, e) => s + (e.amount || 0), 0);
     const totalRevenue = invoices.reduce((s, i) => s + i.totalAmount, 0);
-    const totalCollabCost = invoices.reduce((s, i) => s + (i.collaboratorPay || 0), 0);
+    const totalCollabCost = invoices.reduce((s, i) => s + (i.collaboratorPay || 0), 0) + manualTotal;
     const totalReceivable = invoices.reduce((s, i) => s + i.balance, 0);
     const totalM2 = invoices.reduce((s, i) => s + (i.monoSlabQty || 0), 0);
 

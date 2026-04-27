@@ -137,7 +137,18 @@ export async function syncQBOInvoices() {
 
     for (const qboInv of invoices) {
       const mapped = await mapQBOInvoice(qboInv, collabMap, customerNotesMap);
-      const existing = await Invoice.exists({ qboId: mapped.qboId });
+      const existing = await Invoice.findOne(
+        { qboId: mapped.qboId },
+        { manualQty: 1, manualPay: 1 }
+      );
+      // Preserve manual override: $ wins over SF override wins over computed.
+      if (existing) {
+        if (existing.manualPay !== null && existing.manualPay !== undefined) {
+          mapped.collaboratorPay = existing.manualPay;
+        } else if (existing.manualQty !== null && existing.manualQty !== undefined) {
+          mapped.collaboratorPay = existing.manualQty * 1.00;
+        }
+      }
       await Invoice.findOneAndUpdate(
         { qboId: mapped.qboId },
         { $set: mapped },

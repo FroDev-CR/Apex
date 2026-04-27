@@ -1,22 +1,42 @@
 // ─── Salary rules for Apex Concrete ───────────────────────────────────────
 //
-// Payable work types — all paid at $1.00 per SF/unit:
-//   POUR MONO SLAB | DRIVES AND WALKS | CITY SIDEWALK | EPO
+// Payable work types — all paid at $1.00 per SF/unit.
+// Order matters: check most specific keywords first (EXTRA SIDEWALK before SIDEWALK).
 //
 const PAYABLE_KEYWORDS = [
-  { keyword: 'MONO SLAB',       label: 'Pour Mono Slab' },
+  { keyword: 'POUR MONO SLAB',   label: 'Pour Mono Slab' },
+  { keyword: 'MONO SLAB',        label: 'Pour Mono Slab' },
+  { keyword: 'EXTRA SIDEWALK',   label: 'Extra Sidewalk' },
+  { keyword: 'CITY SIDEWALK',    label: 'City Sidewalk' },
+  { keyword: 'SIDEWALK',         label: 'Sidewalk' },
+  { keyword: 'TURN DOWN',        label: 'Turn Down' },
+  { keyword: 'TURNDOWN',         label: 'Turn Down' },
+  { keyword: 'UNDERCUT',         label: 'Undercut' },
+  { keyword: 'MUCK OUT',         label: 'Muck Out' },
+  { keyword: 'MUCKOUT',          label: 'Muck Out' },
+  { keyword: 'REPLACEMENT',      label: 'Replacement' },
+  { keyword: 'PATCH',            label: 'Patch' },
   { keyword: 'DRIVES AND WALKS', label: 'Drives & Walks' },
-  { keyword: 'DRIVES & WALKS',  label: 'Drives & Walks' },
-  { keyword: 'CITY SIDEWALK',   label: 'City Sidewalk' },
-  { keyword: 'EPO',             label: 'EPO' },
+  { keyword: 'DRIVES & WALKS',   label: 'Drives & Walks' },
+  { keyword: 'DRIVEWAYS',        label: 'Driveways' },
+  { keyword: 'DRIVEWAY',         label: 'Driveways' },
+  { keyword: 'EPO',              label: 'EPO' },
 ];
+
+// Lines containing these are shown on invoice but never paid to collaborator.
+const NON_PAYABLE_KEYWORDS = ['MATERIAL'];
 
 const COLLAB_RATE_PER_SF = 1.00;
 const CLIENT_RATE_PER_SF = 2.00;
 
+function isNonPayableText(text) {
+  return NON_PAYABLE_KEYWORDS.some(k => text.includes(k));
+}
+
 function getLineWorkType(lineItem) {
   const text = [lineItem.productService, lineItem.description]
     .filter(Boolean).join(' ').toUpperCase();
+  if (isNonPayableText(text)) return null;
   for (const { keyword, label } of PAYABLE_KEYWORDS) {
     if (text.includes(keyword)) return label;
   }
@@ -79,6 +99,9 @@ export function computeInvoicePayFields(lineItems = []) {
  */
 export function computePayFieldsFromNote(privateNote = '', totalAmount = 0) {
   const upperNote = privateNote.toUpperCase();
+  if (isNonPayableText(upperNote)) {
+    return { hasMonoSlab: false, monoSlabQty: 0, collaboratorPay: 0 };
+  }
   const isPayable = PAYABLE_KEYWORDS.some(({ keyword }) => upperNote.includes(keyword));
   if (!isPayable) return { hasMonoSlab: false, monoSlabQty: 0, collaboratorPay: 0 };
   const monoSlabQty = CLIENT_RATE_PER_SF > 0 ? totalAmount / CLIENT_RATE_PER_SF : 0;
@@ -108,6 +131,9 @@ export function calculatePeriodSalary(invoices = []) {
       customerName: inv.customerName,
       txnDate: inv.txnDate,
       monoSlabQty: qty,
+      monoSlabQtyOriginal: inv.monoSlabQty || 0,
+      manualQty: inv.manualQty ?? null,
+      manualPay: inv.manualPay ?? null,
       pay,
       workTypes: workTypes.length ? workTypes.join(', ') : '—',
       formula: getPayFormula(inv.lineItems)

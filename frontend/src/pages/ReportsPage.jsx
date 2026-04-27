@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
-import { reportsApi, paymentsApi, invoicesApi } from '../api';
+import { reportsApi, paymentsApi, invoicesApi, manualEntriesApi, collaboratorsApi } from '../api';
 import { useLanguage } from '../context/LanguageContext';
 
 // ─── Formatters ────────────────────────────────────────────────────────────
@@ -271,6 +271,129 @@ function ExternalPaymentModal({ onClose, onSaved }) {
   );
 }
 
+// ─── Manual Salary Entry Modal ────────────────────────────────────────────
+function ManualEntryModal({ onClose, onSaved, defaultCollaboratorId = '' }) {
+  const [collaborators, setCollaborators] = useState([]);
+  const [collabId, setCollabId]   = useState(defaultCollaboratorId);
+  const [newCollabName, setNewCollabName] = useState('');
+  const [creatingNew, setCreatingNew] = useState(false);
+  const [amount, setAmount]       = useState('');
+  const [reason, setReason]       = useState('');
+  const [txnDate, setTxnDate]     = useState(() => new Date().toISOString().slice(0,10));
+  const [saving, setSaving]       = useState(false);
+
+  useEffect(() => {
+    collaboratorsApi.list({ active: true }).then(setCollaborators).catch(() => {});
+  }, []);
+
+  const valid = (creatingNew ? newCollabName.trim() : collabId) && Number(amount) > 0;
+
+  const handleSave = async () => {
+    if (!valid) return;
+    setSaving(true);
+    try {
+      let finalCollabId = collabId;
+      if (creatingNew) {
+        const created = await collaboratorsApi.create({ name: newCollabName.trim() });
+        finalCollabId = created._id;
+      }
+      await manualEntriesApi.create({
+        collaborator: finalCollabId,
+        amount: Number(amount),
+        reason: reason.trim(),
+        txnDate
+      });
+      toast.success('Pago manual guardado');
+      onSaved();
+      onClose();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const iCls = 'w-full border border-concrete-200 dark:border-steel-600 rounded-lg px-3 py-2 text-sm text-steel-800 dark:text-steel-100 bg-white dark:bg-steel-700 focus:outline-none focus:ring-2 focus:ring-primary-400';
+  const lCls = 'block text-xs text-steel-400 dark:text-steel-400 uppercase tracking-wide font-semibold mb-1';
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={onClose}>
+      <div className="bg-white dark:bg-steel-800 rounded-t-2xl sm:rounded-2xl shadow-steel-lg w-full sm:max-w-md" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-concrete-100 dark:border-steel-700">
+          <h3 className="font-bold text-steel-900 dark:text-white">Pago manual a colaborador</h3>
+          <button onClick={onClose} className="text-steel-400 hover:text-steel-700 dark:hover:text-white transition-colors">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="px-5 py-4 space-y-4">
+          {/* Collaborator */}
+          <div>
+            <label className={lCls}>Colaborador</label>
+            {!creatingNew ? (
+              <div className="flex gap-2">
+                <select className={iCls} value={collabId} onChange={e => setCollabId(e.target.value)}>
+                  <option value="">— Seleccionar —</option>
+                  {collaborators.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
+                </select>
+                <button type="button" onClick={() => setCreatingNew(true)}
+                  className="px-3 py-2 rounded-lg border border-primary-300 text-primary-600 dark:text-primary-400 text-xs font-semibold whitespace-nowrap hover:bg-primary-50 dark:hover:bg-primary-900/20">
+                  + Nuevo
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <input className={iCls} placeholder="Nombre del colaborador" autoFocus
+                  value={newCollabName} onChange={e => setNewCollabName(e.target.value)} />
+                <button type="button" onClick={() => { setCreatingNew(false); setNewCollabName(''); }}
+                  className="px-3 py-2 rounded-lg border border-concrete-200 dark:border-steel-600 text-steel-500 text-xs font-semibold whitespace-nowrap">
+                  Cancelar
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Amount */}
+          <div>
+            <label className={lCls}>Monto</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-steel-400 text-sm font-semibold">$</span>
+              <input className={`${iCls} pl-7`} type="number" min="0" step="0.01" placeholder="0.00"
+                value={amount} onChange={e => setAmount(e.target.value)} />
+            </div>
+          </div>
+
+          {/* Reason */}
+          <div>
+            <label className={lCls}>Razón</label>
+            <input className={iCls} placeholder="Ej: Adelanto, bono, trabajo extra"
+              value={reason} onChange={e => setReason(e.target.value)} />
+          </div>
+
+          {/* Date */}
+          <div>
+            <label className={lCls}>Fecha</label>
+            <input className={iCls} type="date" value={txnDate} onChange={e => setTxnDate(e.target.value)} />
+          </div>
+        </div>
+
+        <div className="px-5 pb-5 flex gap-2">
+          <button onClick={onClose}
+            className="flex-1 px-4 py-2.5 rounded-xl border border-concrete-200 dark:border-steel-600 text-sm font-semibold text-steel-600 dark:text-steel-300 hover:bg-concrete-50 dark:hover:bg-steel-700 transition-colors">
+            Cancelar
+          </button>
+          <button onClick={handleSave} disabled={!valid || saving}
+            className="flex-1 px-4 py-2.5 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold transition-colors disabled:opacity-40">
+            {saving ? 'Guardando...' : 'Guardar'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── TAB: Salary ──────────────────────────────────────────────────────────
 function SalaryTab({ params }) {
   const { t } = useLanguage();
@@ -279,6 +402,10 @@ function SalaryTab({ params }) {
   const [expanded, setExpanded]   = useState(null);
   const [extPayments, setExtPayments] = useState([]);
   const [showModal, setShowModal] = useState(false);
+  const [showManualModal, setShowManualModal] = useState(false);
+  const [manualModalDefault, setManualModalDefault] = useState('');
+  const [editingPay, setEditingPay] = useState({}); // { [invoiceId]: draft$ }
+  const [savingPay, setSavingPay] = useState({});
 
   const fetchSalary = () => {
     setLoading(true);
@@ -286,6 +413,38 @@ function SalaryTab({ params }) {
   };
   const fetchExtPayments = () => {
     paymentsApi.list().then(setExtPayments).catch(() => {});
+  };
+
+  const deleteManualEntry = async (id) => {
+    if (!confirm('¿Eliminar pago manual?')) return;
+    try {
+      await manualEntriesApi.delete(id);
+      toast.success('Pago manual eliminado');
+      fetchSalary();
+    } catch (err) { toast.error(err.message); }
+  };
+  const openManualModal = (collabId = '') => {
+    setManualModalDefault(collabId);
+    setShowManualModal(true);
+  };
+
+  const startEditPay = (id, current) => setEditingPay(p => ({ ...p, [id]: String(current ?? '') }));
+  const cancelEditPay = (id) => setEditingPay(p => { const n = { ...p }; delete n[id]; return n; });
+  const saveEditPay = async (id) => {
+    const raw = editingPay[id];
+    const pay = raw === '' ? null : Number(raw);
+    if (pay !== null && (isNaN(pay) || pay < 0)) { toast.error('$ inválido'); return; }
+    setSavingPay(p => ({ ...p, [id]: true }));
+    try {
+      await invoicesApi.setManualPay(id, pay);
+      toast.success(pay === null ? 'Pago restaurado' : `Pago: ${fmt(pay)}`);
+      cancelEditPay(id);
+      fetchSalary();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setSavingPay(p => { const n = { ...p }; delete n[id]; return n; });
+    }
   };
 
   useEffect(() => { fetchSalary(); }, [JSON.stringify(params)]);
@@ -312,6 +471,13 @@ function SalaryTab({ params }) {
           onSaved={fetchExtPayments}
         />
       )}
+      {showManualModal && (
+        <ManualEntryModal
+          onClose={() => setShowManualModal(false)}
+          onSaved={fetchSalary}
+          defaultCollaboratorId={manualModalDefault}
+        />
+      )}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <SectionTitle>{t('salary_title')}</SectionTitle>
         <div className="flex items-center gap-3">
@@ -319,6 +485,15 @@ function SalaryTab({ params }) {
             <div className="text-xs text-steel-400 uppercase">{t('salary_total')}</div>
             <div className="text-xl font-display font-black tabular text-steel-900 dark:text-white">{fmt(data.grandTotal + extTotal)}</div>
           </div>
+          <button
+            onClick={() => openManualModal('')}
+            className="flex items-center gap-1.5 px-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-semibold transition-colors shadow-steel"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+            </svg>
+            Pago manual
+          </button>
           <button
             onClick={() => setShowModal(true)}
             className="flex items-center gap-1.5 px-3 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-xl text-xs font-semibold transition-colors shadow-steel"
@@ -359,7 +534,9 @@ function SalaryTab({ params }) {
                 </svg>
               </button>
               {expanded === i && (
-                <div className="border-t border-concrete-100 overflow-x-auto">
+                <div className="border-t border-concrete-100">
+                {r.breakdown.length > 0 && (
+                <div className="overflow-x-auto">
                   <table className="w-full text-sm min-w-[400px]">
                     <thead>
                       <tr className="text-xs text-steel-400 uppercase tracking-wide bg-concrete-50 dark:bg-steel-900">
@@ -372,7 +549,11 @@ function SalaryTab({ params }) {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-concrete-100 dark:divide-steel-700">
-                      {r.breakdown.map((b, j) => (
+                      {r.breakdown.map((b, j) => {
+                        const isEditing = editingPay[b.invoiceId] !== undefined;
+                        const isSaving  = savingPay[b.invoiceId];
+                        const hasOverride = b.manualPay !== null && b.manualPay !== undefined;
+                        return (
                         <tr key={j} className="hover:bg-concrete-50 dark:hover:bg-steel-700">
                           <td className="px-4 py-2 font-mono text-steel-700 dark:text-steel-300">#{b.docNumber}</td>
                           <td className="px-4 py-2 text-steel-600 dark:text-steel-300 truncate max-w-[160px] hidden sm:table-cell">{b.customerName}</td>
@@ -383,11 +564,85 @@ function SalaryTab({ params }) {
                           </td>
                           <td className="px-4 py-2 text-steel-500 dark:text-steel-400 whitespace-nowrap">{fmtDate(b.txnDate)}</td>
                           <td className="px-4 py-2 text-right text-steel-700 dark:text-steel-200">{fmtNum(b.monoSlabQty)}</td>
-                          <td className="px-4 py-2 text-right font-semibold text-steel-900 dark:text-white">{fmt(b.pay)}</td>
+                          <td className="px-4 py-2 text-right">
+                            {isEditing ? (
+                              <div className="flex gap-1 items-center justify-end">
+                                <div className="relative">
+                                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-steel-400 text-xs">$</span>
+                                  <input
+                                    type="number" min="0" step="0.01"
+                                    className="w-24 border border-emerald-400 rounded-lg pl-5 pr-2 py-1 text-sm text-right text-steel-800 dark:text-steel-100 bg-white dark:bg-steel-700 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                                    value={editingPay[b.invoiceId]}
+                                    onChange={e => setEditingPay(prev => ({ ...prev, [b.invoiceId]: e.target.value }))}
+                                    autoFocus
+                                  />
+                                </div>
+                                <button onClick={() => saveEditPay(b.invoiceId)} disabled={isSaving}
+                                  className="px-2 py-1 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-semibold disabled:opacity-40">
+                                  {isSaving ? '…' : '✓'}
+                                </button>
+                                <button onClick={() => cancelEditPay(b.invoiceId)}
+                                  className="px-1.5 py-1 border border-concrete-200 dark:border-steel-600 text-steel-500 rounded-lg text-xs">✕</button>
+                                {hasOverride && (
+                                  <button onClick={() => setEditingPay(prev => ({ ...prev, [b.invoiceId]: '' }))}
+                                    className="px-1.5 py-1 text-xs text-red-400 hover:text-red-600" title="Restaurar">↩</button>
+                                )}
+                              </div>
+                            ) : (
+                              <button onClick={() => startEditPay(b.invoiceId, b.manualPay ?? b.pay)}
+                                className="inline-flex items-center gap-1 font-semibold text-steel-900 dark:text-white hover:text-emerald-600 transition-colors">
+                                {hasOverride && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" title="Override manual" />}
+                                {fmt(b.pay)}
+                                <svg className="w-3 h-3 text-steel-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                              </button>
+                            )}
+                          </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
+                </div>
+                )}
+
+                {/* ── Manual entries section ── */}
+                <div className="px-4 py-3 bg-emerald-50/40 dark:bg-emerald-900/10 border-t border-emerald-100 dark:border-emerald-900/30">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-xs font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-400">
+                      Pagos manuales {r.manualEntries?.length > 0 && <span className="text-steel-400">· {r.manualEntries.length}</span>}
+                    </div>
+                    <button onClick={() => openManualModal(r.collaborator?._id || '')}
+                      disabled={!r.collaborator}
+                      title={r.collaborator ? 'Agregar pago manual' : 'Asigne un colaborador primero'}
+                      className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300 disabled:opacity-30 disabled:cursor-not-allowed">
+                      + Agregar
+                    </button>
+                  </div>
+                  {(!r.manualEntries || r.manualEntries.length === 0) ? (
+                    <div className="text-xs text-steel-400 italic">Sin pagos manuales</div>
+                  ) : (
+                    <div className="space-y-1">
+                      {r.manualEntries.map((m) => (
+                        <div key={m._id} className="flex items-center gap-2 text-sm bg-white dark:bg-steel-800 rounded-lg px-3 py-2 border border-emerald-100 dark:border-emerald-900/40">
+                          <div className="text-xs text-steel-400 whitespace-nowrap">{fmtDate(m.txnDate)}</div>
+                          <div className="flex-1 min-w-0 text-steel-700 dark:text-steel-300 truncate">{m.reason || <span className="italic text-steel-400">Sin razón</span>}</div>
+                          <div className="font-bold text-emerald-700 dark:text-emerald-400 whitespace-nowrap">{fmt(m.amount)}</div>
+                          <button onClick={() => deleteManualEntry(m._id)}
+                            className="p-1 text-steel-300 hover:text-red-500 transition-colors">
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                      ))}
+                      <div className="flex justify-end pt-1 text-xs text-steel-500">
+                        Subtotal manual: <span className="ml-1 font-bold text-emerald-700 dark:text-emerald-400">{fmt(r.manualTotal || 0)}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
                 </div>
               )}
             </div>
@@ -837,6 +1092,7 @@ function buildWorkbook(data) {
     [sx('% Margen'),             pctx(r.marginPct)],
     [sx('Total SF'),             m2c(r.totalM2)],
     [sx('Total Facturas'),       m2c(r.invoiceCount)],
+    [sx('Pagos Manuales'),       $x(r.manualTotal || 0)],
   ]);
   wsR['!cols'] = [{ wch: 26 }, { wch: 16 }];
   XLSX.utils.book_append_sheet(wb, wsR, 'Resumen');
@@ -848,9 +1104,18 @@ function buildWorkbook(data) {
   salRows.push([sx(''), sx(''), sx(''), sx(''), sx(''), sx('')]);
   for (const sal of data.salaries) {
     salRows.push([sx(sal.colaborador), m2c(sal.m2), $x(sal.total), m2c(sal.facturas), sx(''), sx('')]);
-    salRows.push([sx('  Factura'), sx('  Cliente'), sx('  Tarea'), sx('  SF'), sx('  Pago'), sx('')]);
-    for (const b of (sal.breakdown || [])) {
-      salRows.push([sx(`  #${b.docNumber}`), sx(`  ${b.customerName}`), sx(`  ${b.tarea}`), m2c(b.m2), $x(b.pay), sx('')]);
+    if ((sal.breakdown || []).length > 0) {
+      salRows.push([sx('  Factura'), sx('  Cliente'), sx('  Tarea'), sx('  SF'), sx('  Pago'), sx('')]);
+      for (const b of (sal.breakdown || [])) {
+        salRows.push([sx(`  #${b.docNumber}`), sx(`  ${b.customerName}`), sx(`  ${b.tarea}`), m2c(b.m2), $x(b.pay), sx('')]);
+      }
+    }
+    if ((sal.manualEntries || []).length > 0) {
+      salRows.push([sx('  Pagos manuales'), sx('  Razón'), sx('  Fecha'), sx(''), sx('  Monto'), sx('')]);
+      for (const me of sal.manualEntries) {
+        salRows.push([sx('  Manual'), sx(`  ${me.razon || ''}`), sx(`  ${me.fecha || ''}`), sx(''), $x(me.monto), sx('')]);
+      }
+      salRows.push([sx(''), sx(''), sx('  Subtotal manual'), sx(''), $x(sal.manualTotal || 0), sx('')]);
     }
     salRows.push([sx(''), sx(''), sx(''), sx(''), sx(''), sx('')]);
   }
@@ -889,6 +1154,14 @@ function openPrintView(data) {
         <td class="num" style="color:#64748b">${fN(b.m2)}</td>
         <td class="num" style="color:#64748b">${fU(b.pay)}</td>
       </tr>`).join('');
+    const manualRows = (s.manualEntries || []).map((m, bi) => `
+      <tr class="detail-row ${bi%2===0?'det-even':''}" style="background:#ecfdf5">
+        <td style="padding-left:24px;color:#047857">Manual</td>
+        <td style="color:#047857">${m.razon || '—'}</td>
+        <td style="color:#047857">${m.fecha || ''}</td>
+        <td></td>
+        <td class="num" style="color:#047857;font-weight:600">${fU(m.monto)}</td>
+      </tr>`).join('');
     return `
       <tr class="collab-row">
         <td><b>${s.colaborador}</b></td>
@@ -897,7 +1170,8 @@ function openPrintView(data) {
         <td class="num money"><b>${fU(s.total)}</b></td>
         <td class="num">${s.facturas} fact.</td>
       </tr>
-      ${breakdownRows}`;
+      ${breakdownRows}
+      ${manualRows}`;
   }).join('');
 
   const invRows = data.invoices.map((i, idx) => `
