@@ -115,12 +115,23 @@ async function buildCustomerNotesMap() {
   return map;
 }
 
-export async function syncQBOInvoices() {
-  console.log('🔄 [qboSync] Starting QBO invoice sync...');
+export async function syncQBOInvoices({ sinceDays } = {}) {
+  const fast = typeof sinceDays === 'number' && sinceDays > 0;
+  console.log(`🔄 [qboSync] Starting QBO invoice sync${fast ? ` (last ${sinceDays} days)` : ' (full)'}...`);
 
   const collaborators = await Collaborator.find({ isActive: true });
   const collabMap = buildCollaboratorMap(collaborators);
-  const customerNotesMap = await buildCustomerNotesMap();
+  // Skip the all-customers Notes scan in fast mode — preserves existing collaborator
+  // assignment on already-synced invoices via the existing-record branch below.
+  const customerNotesMap = fast ? new Map() : await buildCustomerNotesMap();
+
+  // Build TxnDate filter for fast sync
+  let dateClause = '';
+  if (fast) {
+    const since = new Date(Date.now() - sinceDays * 86400000);
+    const sinceStr = since.toISOString().slice(0, 10);
+    dateClause = ` WHERE TxnDate >= '${sinceStr}'`;
+  }
 
   let startPosition = 1;
   const pageSize = 100;
@@ -129,7 +140,7 @@ export async function syncQBOInvoices() {
   let updated = 0;
 
   while (true) {
-    const query = `SELECT * FROM Invoice ORDERBY TxnDate DESC STARTPOSITION ${startPosition} MAXRESULTS ${pageSize}`;
+    const query = `SELECT * FROM Invoice${dateClause} ORDERBY TxnDate DESC STARTPOSITION ${startPosition} MAXRESULTS ${pageSize}`;
     const data = await qboRequest('/query', { query });
     const invoices = data.QueryResponse?.Invoice || [];
 

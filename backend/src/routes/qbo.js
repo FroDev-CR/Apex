@@ -85,7 +85,8 @@ qboRoutes.get('/status', async (req, res) => {
 // ─── Sync invoices from QBO ────────────────────────────────────────────────
 qboRoutes.post('/sync', async (req, res) => {
   try {
-    const result = await syncQBOInvoices();
+    const { sinceDays } = req.body || {};
+    const result = await syncQBOInvoices({ sinceDays });
     res.json({ success: true, ...result, syncedAt: new Date().toISOString() });
   } catch (err) {
     console.error('❌ QBO sync error:', err.message);

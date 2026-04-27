@@ -49,7 +49,7 @@ if (API_URL) {
 // ─── QuickBooks Online ──────────────────────────────────────────────────────
 export const qboApi = {
   status: () => fetchApi('/api/qbo/status'),
-  sync: () => fetchApi('/api/qbo/sync', { method: 'POST' }),
+  sync: (opts = {}) => fetchApi('/api/qbo/sync', { method: 'POST', body: JSON.stringify(opts) }),
   disconnect: () => fetchApi('/api/qbo/disconnect', { method: 'POST' }),
   getConnectUrl: () => `${API_URL}/api/qbo/connect`
 };

@@ -30,6 +30,7 @@ function ConexionesTab() {
   const [status, setStatus]             = useState(null);
   const [loading, setLoading]           = useState(true);
   const [syncing, setSyncing]           = useState(false);
+  const [syncingFast, setSyncingFast]   = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -56,6 +57,17 @@ function ConexionesTab() {
       window.dispatchEvent(new CustomEvent('invoices-synced'));
     } catch (err) { toast.error(`Error: ${err.message}`, { id: 'sync' }); }
     finally { setSyncing(false); }
+  };
+
+  const handleSyncFast = async () => {
+    setSyncingFast(true);
+    toast.loading('Sync rápido (última semana)...', { id: 'sync' });
+    try {
+      const r = await qboApi.sync({ sinceDays: 7 });
+      toast.success(`Sync rápido: ${r.inserted} nuevas, ${r.updated} actualizadas`, { id: 'sync', duration: 6000 });
+      window.dispatchEvent(new CustomEvent('invoices-synced'));
+    } catch (err) { toast.error(`Error: ${err.message}`, { id: 'sync' }); }
+    finally { setSyncingFast(false); }
   };
 
   const handleDisconnect = async () => {
@@ -126,7 +138,7 @@ function ConexionesTab() {
               )}
 
               <div className="flex flex-wrap gap-2 pt-1">
-                <button onClick={handleSync} disabled={syncing || status.refreshTokenExpired}
+                <button onClick={handleSync} disabled={syncing || syncingFast || status.refreshTokenExpired}
                   className="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all bg-primary-500 hover:bg-primary-600 text-white shadow-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
                   {syncing ? (
                     <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -140,6 +152,22 @@ function ConexionesTab() {
                     </svg>
                   )}
                   {syncing ? 'Sincronizando...' : 'Sincronizar Facturas'}
+                </button>
+                <button onClick={handleSyncFast} disabled={syncing || syncingFast || status.refreshTokenExpired}
+                  title="Solo sincroniza facturas de los últimos 7 días"
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all bg-amber-500 hover:bg-amber-600 text-white shadow-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
+                  {syncingFast ? (
+                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                        d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                  )}
+                  {syncingFast ? 'Sync rápido...' : 'Sync rápido (1 sem)'}
                 </button>
                 <button onClick={() => window.location.href = qboApi.getConnectUrl()}
                   className="px-4 py-2 rounded-lg font-semibold text-sm border border-concrete-200 dark:border-steel-600 text-steel-600 dark:text-steel-300 hover:bg-concrete-50 dark:hover:bg-steel-700 transition-colors">
