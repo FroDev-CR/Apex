@@ -338,6 +338,40 @@ reportRoutes.get('/export', async (req, res) => {
   }
 });
 
+// ─── GET /api/reports/epos-debug ──────────────────────────────────────────
+// Lists every invoice that mentions "EPO" anywhere — for diagnosing missing rows
+reportRoutes.get('/epos-debug', async (req, res) => {
+  try {
+    const filter = {
+      $or: [
+        { 'lineItems.productService': { $regex: 'EPO', $options: 'i' } },
+        { 'lineItems.description':    { $regex: 'EPO', $options: 'i' } },
+        { privateNote: { $regex: 'EPO', $options: 'i' } },
+      ],
+    };
+    const invoices = await Invoice.find(filter)
+      .select('docNumber customerName txnDate privateNote lineItems collaborator collaboratorPay')
+      .populate('collaborator', 'name')
+      .sort({ txnDate: -1 })
+      .lean();
+
+    const rows = invoices.map(i => ({
+      docNumber: i.docNumber,
+      customer: i.customerName,
+      date: i.txnDate,
+      collaborator: i.collaborator?.name || null,
+      collaboratorPay: i.collaboratorPay,
+      epoLines: (i.lineItems || [])
+        .filter(l => /EPO/i.test(l.productService || '') || /EPO/i.test(l.description || ''))
+        .map(l => ({ productService: l.productService, description: l.description, qty: l.qty, rate: l.rate, amount: l.amount })),
+      privateNoteHasEpo: /EPO/i.test(i.privateNote || ''),
+    }));
+    res.json({ count: rows.length, rows });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── GET /api/reports/epos ────────────────────────────────────────────────
 // EPO invoices grouped by collaborator — editable SF for salary override
 reportRoutes.get('/epos', async (req, res) => {
