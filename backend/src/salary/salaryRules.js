@@ -20,8 +20,10 @@ const PAYABLE_KEYWORDS = [
   { keyword: 'DRIVES & WALKS',   label: 'Drives & Walks' },
   { keyword: 'DRIVEWAYS',        label: 'Driveways' },
   { keyword: 'DRIVEWAY',         label: 'Driveways' },
-  { keyword: 'EPO',              label: 'EPO' },
 ];
+
+// EPO lines (productService matches \bEPO\b) are NOT auto-paid via SF×$1.
+// They appear in the EPOs tab and pay is set manually via manualPay/manualQty.
 
 // Lines containing these are shown on invoice but never paid to collaborator.
 const NON_PAYABLE_KEYWORDS = ['MATERIAL'];
