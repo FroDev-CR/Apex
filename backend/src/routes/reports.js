@@ -338,6 +338,44 @@ reportRoutes.get('/export', async (req, res) => {
   }
 });
 
+// ─── GET /api/reports/epos-debug ──────────────────────────────────────────
+// Dumps full lineItems for any invoice whose privateNote OR any productService/description mentions EPO
+reportRoutes.get('/epos-debug', async (req, res) => {
+  try {
+    const filter = {
+      $or: [
+        { 'lineItems.productService': { $regex: 'EPO', $options: 'i' } },
+        { 'lineItems.description':    { $regex: 'EPO', $options: 'i' } },
+        { privateNote: { $regex: 'EPO', $options: 'i' } },
+      ],
+    };
+    const invoices = await Invoice.find(filter)
+      .select('docNumber customerName txnDate privateNote lineItems')
+      .sort({ txnDate: -1 })
+      .limit(20)
+      .lean();
+    res.json({ count: invoices.length, invoices });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── GET /api/reports/qbo-raw ─────────────────────────────────────────────
+// Fetches a single invoice straight from QBO (bypassing DB) so we can inspect
+// the raw line item shape — what ItemRef.Name actually returns.
+reportRoutes.get('/qbo-raw/:docNumber', async (req, res) => {
+  try {
+    const { qboRequest } = await import('../config/qbo.js');
+    const docNum = req.params.docNumber;
+    const data = await qboRequest('/query', {
+      query: `SELECT * FROM Invoice WHERE DocNumber = '${docNum}'`
+    });
+    res.json(data.QueryResponse?.Invoice?.[0] || { error: 'not found' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── GET /api/reports/epos ────────────────────────────────────────────────
 // EPO invoices grouped by collaborator — editable SF for salary override
 // EPO is detected only when a line item's productService matches \bEPO\b
