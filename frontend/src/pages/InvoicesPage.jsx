@@ -34,6 +34,11 @@ function InvoiceModal({ invoice, collaborators, onClose, onCollaboratorChange })
   const [assigningCollab, setAssigningCollab] = useState(false);
   const [selectedCollab, setSelectedCollab] = useState(invoice.collaborator?._id || '');
 
+  const [editingPay, setEditingPay] = useState(false);
+  const [payDraft, setPayDraft]     = useState(String(invoice.collaboratorPay ?? ''));
+  const [savingPay, setSavingPay]   = useState(false);
+  const isManualPay = invoice.manualPay !== null && invoice.manualPay !== undefined;
+
   const handleAssign = async () => {
     setAssigningCollab(true);
     try {
@@ -45,6 +50,28 @@ function InvoiceModal({ invoice, collaborators, onClose, onCollaboratorChange })
     } finally {
       setAssigningCollab(false);
     }
+  };
+
+  const handleSavePay = async () => {
+    const raw = payDraft.trim();
+    const pay = raw === '' ? null : Number(raw);
+    if (pay !== null && (isNaN(pay) || pay < 0)) { toast.error('$ inválido'); return; }
+    setSavingPay(true);
+    try {
+      await invoicesApi.setManualPay(invoice._id, pay);
+      toast.success(pay === null ? 'Pago restaurado a auto' : `Pago: ${fmt(pay)}`);
+      setEditingPay(false);
+      onCollaboratorChange();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setSavingPay(false);
+    }
+  };
+
+  const handleCancelPay = () => {
+    setPayDraft(String(invoice.collaboratorPay ?? ''));
+    setEditingPay(false);
   };
 
   return (
@@ -103,8 +130,50 @@ function InvoiceModal({ invoice, collaborators, onClose, onCollaboratorChange })
               </div>
             </div>
             <div className="bg-primary-50 rounded-xl p-3 text-center">
-              <div className="text-xs text-steel-400 uppercase mb-1">Pago collab</div>
-              <div className="text-lg font-black text-primary-700">{fmt(invoice.collaboratorPay)}</div>
+              <div className="text-xs text-steel-400 uppercase mb-1 flex items-center justify-center gap-1">
+                Pago collab
+                {isManualPay && <span className="text-[9px] font-bold text-green-700 bg-green-100 px-1 rounded">MANUAL</span>}
+              </div>
+              {editingPay ? (
+                <div className="flex items-center gap-1 justify-center">
+                  <span className="text-primary-700 font-black">$</span>
+                  <input
+                    type="number" step="0.01" min="0" autoFocus
+                    value={payDraft}
+                    onChange={e => setPayDraft(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') handleSavePay(); if (e.key === 'Escape') handleCancelPay(); }}
+                    className="w-20 text-center text-base font-black text-primary-700 bg-white border border-primary-300 rounded px-1 py-0.5 focus:outline-none focus:ring-2 focus:ring-primary-400"
+                    placeholder="0.00"
+                  />
+                  <button onClick={handleSavePay} disabled={savingPay} title="Guardar"
+                    className="text-green-600 hover:text-green-700 disabled:opacity-40 p-0.5">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7"/></svg>
+                  </button>
+                  <button onClick={handleCancelPay} disabled={savingPay} title="Cancelar"
+                    className="text-steel-400 hover:text-red-500 disabled:opacity-40 p-0.5">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
+                  </button>
+                </div>
+              ) : (
+                <button onClick={() => { setPayDraft(String(invoice.collaboratorPay ?? '')); setEditingPay(true); }}
+                  className="group inline-flex items-center gap-1.5 text-lg font-black text-primary-700 hover:text-primary-800 transition-colors"
+                  title="Editar pago">
+                  {fmt(invoice.collaboratorPay)}
+                  <svg className="w-3.5 h-3.5 opacity-50 group-hover:opacity-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                  </svg>
+                </button>
+              )}
+              {isManualPay && !editingPay && (
+                <button onClick={async () => {
+                  setSavingPay(true);
+                  try { await invoicesApi.setManualPay(invoice._id, null); toast.success('Pago restaurado'); onCollaboratorChange(); }
+                  catch (err) { toast.error(err.message); }
+                  finally { setSavingPay(false); }
+                }} className="text-[10px] text-steel-400 hover:text-red-500 mt-0.5 underline">
+                  restaurar auto
+                </button>
+              )}
             </div>
           </div>
 

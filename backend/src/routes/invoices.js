@@ -85,7 +85,7 @@ invoiceRoutes.post('/import', async (req, res) => {
         .filter(l => l.DetailType === 'SalesItemLineDetail')
         .map(l => ({
           lineNum: l.LineNum,
-          productService: l.SalesItemLineDetail?.ItemRef?.Name || '',
+          productService: l.SalesItemLineDetail?.ItemRef?.name || l.SalesItemLineDetail?.ItemRef?.Name || '',
           description: l.Description || '',
           qty: l.SalesItemLineDetail?.Qty || 0,
           rate: l.SalesItemLineDetail?.UnitPrice || 0,
