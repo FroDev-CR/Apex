@@ -48,7 +48,7 @@ async function mapQBOInvoice(qbo, collabMap, customerNotesMap) {
     .filter(l => l.DetailType === 'SalesItemLineDetail')
     .map(l => ({
       lineNum: l.LineNum,
-      productService: l.SalesItemLineDetail?.ItemRef?.Name || l.Description || '',
+      productService: l.SalesItemLineDetail?.ItemRef?.name || l.SalesItemLineDetail?.ItemRef?.Name || l.Description || '',
       description: l.Description || '',
       qty: l.SalesItemLineDetail?.Qty || 0,
       rate: l.SalesItemLineDetail?.UnitPrice || 0,

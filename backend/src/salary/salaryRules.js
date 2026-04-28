@@ -39,6 +39,10 @@ function getLineWorkType(lineItem) {
   const text = [lineItem.productService, lineItem.description]
     .filter(Boolean).join(' ').toUpperCase();
   if (isNonPayableText(text)) return null;
+  // EPO lines are paid only via manual override in the EPOs tab — not auto-paid by SF×$1.
+  // Match on the productService field alone (the EPO marker), so a line whose
+  // description happens to contain "EPO" but whose item is regular work still pays.
+  if (/\bEPO\b/i.test(lineItem.productService || '')) return null;
   for (const { keyword, label } of PAYABLE_KEYWORDS) {
     if (text.includes(keyword)) return label;
   }
