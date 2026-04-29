@@ -372,6 +372,36 @@ reportRoutes.get('/customer-debug/:id', async (req, res) => {
   }
 });
 
+// ─── GET /api/reports/invoice-debug/:docNumber ────────────────────────────
+// Dumps a raw QBO Invoice by DocNumber so we can identify which field holds
+// "Memo on statement (hidden)" (vs PrivateNote, CustomerMemo, etc.).
+reportRoutes.get('/invoice-debug/:docNumber', async (req, res) => {
+  try {
+    const { qboRequest } = await import('../config/qbo.js');
+    const doc = req.params.docNumber;
+    const out = {};
+    try {
+      out.queryByDocNumber = await qboRequest('/query', {
+        query: `SELECT * FROM Invoice WHERE DocNumber = '${doc}'`
+      });
+    } catch (e) { out.queryByDocNumber = { error: e.message }; }
+
+    // Pull Id from query result and fetch directly with allfields/minorversion
+    const inv = out.queryByDocNumber?.QueryResponse?.Invoice?.[0];
+    if (inv?.Id) {
+      try {
+        out.directFetch = await qboRequest(`/invoice/${inv.Id}`);
+      } catch (e) { out.directFetch = { error: e.message }; }
+      try {
+        out.mv75 = await qboRequest(`/invoice/${inv.Id}`, { minorversion: 75 });
+      } catch (e) { out.mv75 = { error: e.message }; }
+    }
+    res.json(out);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── GET /api/reports/epos ────────────────────────────────────────────────
 // EPO invoices grouped by collaborator — editable SF for salary override
 // EPO is detected only when a line item's productService matches \bEPO\b
