@@ -22,9 +22,14 @@ reportRoutes.get('/salary', async (req, res) => {
   try {
     const { dateFrom, dateTo, collaboratorId } = req.query;
 
+    // Include: auto-paid mono slab/sidewalk/driveway invoices, OR any invoice with a
+    // manual override (EPO, Replacement, Patch, Turn Down, …) that Emily confirmed.
     const invoiceFilter = {
-      hasMonoSlab: true,
-      collaboratorPay: { $gt: 1 },
+      $or: [
+        { manualPay: { $ne: null } },
+        { manualQty: { $ne: null } },
+        { hasMonoSlab: true, collaboratorPay: { $gt: 1 } },
+      ],
       ...dateFilter(dateFrom, dateTo)
     };
     if (collaboratorId) invoiceFilter.collaborator = collaboratorId;
@@ -284,7 +289,10 @@ reportRoutes.get('/export', async (req, res) => {
     // ── Salarios por colaborador ──
     const bySalary = new Map();
     for (const inv of invoices) {
-      if (!inv.hasMonoSlab || (inv.collaboratorPay || 0) <= 1) continue;
+      const hasOverride = (inv.manualPay !== null && inv.manualPay !== undefined)
+                       || (inv.manualQty !== null && inv.manualQty !== undefined);
+      const isAutoPayable = inv.hasMonoSlab && (inv.collaboratorPay || 0) > 1;
+      if (!hasOverride && !isAutoPayable) continue;
       const key  = inv.collaborator?._id?.toString() || '__unassigned__';
       const name = inv.collaborator?.name || 'Sin asignar';
       if (!bySalary.has(key)) bySalary.set(key, { colaborador: name, m2: 0, total: 0, facturas: 0, breakdown: [] });
