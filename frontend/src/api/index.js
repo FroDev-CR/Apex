@@ -145,4 +145,6 @@ export const collaboratorsApi = {
   update: (id, data) => fetchApi(`/api/collaborators/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   delete: (id) => fetchApi(`/api/collaborators/${id}`, { method: 'DELETE' }),
   bulkDeactivate: (ids) => fetchApi('/api/collaborators/bulk-deactivate', { method: 'POST', body: JSON.stringify({ ids }) }),
+  bulkDelete: (ids, force = false) => fetchApi('/api/collaborators/bulk-delete', { method: 'POST', body: JSON.stringify({ ids, force }) }),
+  cleanupOrphans: () => fetchApi('/api/collaborators/cleanup-orphans', { method: 'POST' }),
 };

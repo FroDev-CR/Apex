@@ -4,18 +4,29 @@ import { Collaborator } from '../models/Collaborator.js';
 import { computeInvoicePayFields } from '../salary/salaryRules.js';
 
 function buildCollaboratorMap(collaborators) {
+  // Sort by name length desc so multi-word collabs ("Juan Perez") beat single-word
+  // collabs ("Juan") when both could match the same memo. Map preserves insertion order.
   const map = new Map();
-  for (const c of collaborators) {
+  const sorted = [...collaborators].sort((a, b) => b.name.length - a.name.length);
+  for (const c of sorted) {
     map.set(c.name.toLowerCase().trim(), c._id);
   }
   return map;
 }
 
+// Match only when the collab name appears as a whole word in the memo. Using
+// non-letter lookarounds (Unicode-aware) so "ED" does NOT match inside "REPLACED",
+// and accented names like "JOSÉ" still match cleanly. Returns the longest match
+// because the map is pre-sorted by name length desc.
 function matchCollaborator(raw = '', collabMap) {
   if (!raw) return null;
-  const normalized = raw.toLowerCase().trim();
+  const text = String(raw).trim();
+  if (!text) return null;
   for (const [name, id] of collabMap.entries()) {
-    if (normalized.includes(name) || name.includes(normalized)) return id;
+    if (!name) continue;
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(`(^|[^\\p{L}])${escaped}($|[^\\p{L}])`, 'iu');
+    if (re.test(text)) return id;
   }
   return null;
 }

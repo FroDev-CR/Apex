@@ -18,7 +18,7 @@ function CollaboratorsPage() {
   const fetchCollaborators = async () => {
     setLoading(true);
     try {
-      setCollaborators(await collaboratorsApi.list());
+      setCollaborators(await collaboratorsApi.list({ withCounts: 'true' }));
     } catch (err) {
       toast.error(`Error: ${err.message}`);
     } finally {
@@ -98,6 +98,47 @@ function CollaboratorsPage() {
     }
   };
 
+  const handleBulkHardDelete = async () => {
+    if (selected.size === 0) return;
+    if (!confirm(`⚠️ ELIMINAR PERMANENTEMENTE ${selected.size} colaborador(es)? No se puede deshacer.`)) return;
+    try {
+      const res = await collaboratorsApi.bulkDelete([...selected], false);
+      toast.success(`${res.deleted} colaborador(es) eliminados`);
+      setSelected(new Set());
+      fetchCollaborators();
+    } catch (err) {
+      // Backend returns 409 with blocked list when some have refs
+      if (err.message?.includes('have invoices')) {
+        if (confirm('Algunos colaboradores tienen facturas asignadas. ¿Eliminar de todas formas? (las facturas quedarán "Sin asignar")')) {
+          try {
+            const res = await collaboratorsApi.bulkDelete([...selected], true);
+            toast.success(`${res.deleted} colaborador(es) eliminados (forzado)`);
+            setSelected(new Set());
+            fetchCollaborators();
+          } catch (e2) { toast.error(e2.message); }
+        }
+      } else {
+        toast.error(err.message);
+      }
+    }
+  };
+
+  const handleCleanupOrphans = async () => {
+    const orphans = collaborators.filter(c => (c.invoiceCount || 0) === 0 && (c.manualEntryCount || 0) === 0);
+    if (orphans.length === 0) {
+      toast('No hay colaboradores sin facturas');
+      return;
+    }
+    if (!confirm(`Eliminar ${orphans.length} colaborador(es) sin facturas ni pagos manuales?`)) return;
+    try {
+      const res = await collaboratorsApi.cleanupOrphans();
+      toast.success(`${res.deleted} colaborador(es) eliminados`);
+      fetchCollaborators();
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
   const allSelected = collaborators.length > 0 && selected.size === collaborators.length;
   const someSelected = selected.size > 0;
 
@@ -109,12 +150,21 @@ function CollaboratorsPage() {
           <h1 className="text-2xl font-bold text-steel-900">Equipo</h1>
           <p className="text-steel-500 text-sm mt-0.5">Colaboradores registrados en el sistema</p>
         </div>
-        <button
-          onClick={() => setShowForm(true)}
-          className="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg font-semibold text-sm transition-colors shadow-sm"
-        >
-          + Agregar
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleCleanupOrphans}
+            className="px-3 py-2 bg-steel-700 hover:bg-steel-600 text-steel-100 rounded-lg text-sm font-semibold transition-colors"
+            title="Eliminar colaboradores sin facturas ni pagos manuales"
+          >
+            🧹 Limpiar sin facturas
+          </button>
+          <button
+            onClick={() => setShowForm(true)}
+            className="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg font-semibold text-sm transition-colors shadow-sm"
+          >
+            + Agregar
+          </button>
+        </div>
       </div>
 
       {/* Bulk action bar */}
@@ -144,15 +194,23 @@ function CollaboratorsPage() {
           </button>
 
           {someSelected && (
-            <button
-              onClick={handleBulkDeactivate}
-              className="ml-auto flex items-center gap-2 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-sm font-semibold transition-colors"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-              Desactivar {selected.size} seleccionados
-            </button>
+            <div className="ml-auto flex items-center gap-2">
+              <button
+                onClick={handleBulkDeactivate}
+                className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg text-sm font-semibold transition-colors"
+              >
+                Desactivar {selected.size}
+              </button>
+              <button
+                onClick={handleBulkHardDelete}
+                className="flex items-center gap-2 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-sm font-semibold transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Eliminar {selected.size} permanentemente
+              </button>
+            </div>
           )}
         </div>
       )}
@@ -267,6 +325,15 @@ function CollaboratorsPage() {
                   <div className="min-w-0">
                     <div className="font-bold text-steel-900 truncate">{c.name}</div>
                     <div className="text-xs text-steel-500 truncate">{c.email}</div>
+                    {(c.invoiceCount !== undefined || c.manualEntryCount !== undefined) && (
+                      <div className={`text-xs mt-0.5 font-semibold ${
+                        (c.invoiceCount || 0) + (c.manualEntryCount || 0) === 0
+                          ? 'text-red-400'
+                          : 'text-steel-400'
+                      }`}>
+                        {c.invoiceCount || 0} fact · {c.manualEntryCount || 0} pagos
+                      </div>
+                    )}
                   </div>
                 </div>
 

@@ -73,7 +73,12 @@ invoiceRoutes.post('/import', async (req, res) => {
     const { computeInvoicePayFields, computePayFieldsFromNote } = await import('../salary/salaryRules.js');
 
     const collaborators = await Collaborator.find({ isActive: true });
-    const collabMap = new Map(collaborators.map(c => [c.name.toLowerCase().trim(), c._id]));
+    // Sort by name length desc so "Juan Perez" matches before "Juan"
+    const collabMap = new Map(
+      [...collaborators]
+        .sort((a, b) => b.name.length - a.name.length)
+        .map(c => [c.name.toLowerCase().trim(), c._id])
+    );
 
     let inserted = 0, updated = 0;
 
@@ -94,9 +99,13 @@ invoiceRoutes.post('/import', async (req, res) => {
 
       const privateNote = qbo.PrivateNote || '';
       let collaboratorId = null;
-      const normalized = privateNote.toLowerCase().trim();
-      for (const [name, id] of collabMap.entries()) {
-        if (normalized.includes(name)) { collaboratorId = id; break; }
+      if (privateNote.trim()) {
+        for (const [name, id] of collabMap.entries()) {
+          if (!name) continue;
+          const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const re = new RegExp(`(^|[^\\p{L}])${escaped}($|[^\\p{L}])`, 'iu');
+          if (re.test(privateNote)) { collaboratorId = id; break; }
+        }
       }
 
       const customFields = qbo.CustomField || [];
