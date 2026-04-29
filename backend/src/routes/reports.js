@@ -347,15 +347,26 @@ reportRoutes.get('/export', async (req, res) => {
 });
 
 // ─── GET /api/reports/customer-debug/:id ──────────────────────────────────
-// Dump full Customer entity from QBO so we can identify which field matches
-// "Memo on statement (hidden)" in the QBO UI.
+// Tries multiple QBO API variants to expose every field on a Customer so we
+// can identify which one corresponds to "Memo on statement (hidden)".
 reportRoutes.get('/customer-debug/:id', async (req, res) => {
   try {
     const { qboRequest } = await import('../config/qbo.js');
-    const data = await qboRequest('/query', {
-      query: `SELECT * FROM Customer WHERE Id = '${req.params.id}'`
-    });
-    res.json(data.QueryResponse?.Customer?.[0] || { error: 'not found' });
+    const id = req.params.id;
+    const out = {};
+    try {
+      out.directFetch = await qboRequest(`/customer/${id}`);
+    } catch (e) { out.directFetch = { error: e.message }; }
+    try {
+      out.directAllFields = await qboRequest(`/customer/${id}`, { include: 'allfields' });
+    } catch (e) { out.directAllFields = { error: e.message }; }
+    try {
+      out.mv75 = await qboRequest(`/customer/${id}`, { minorversion: 75 });
+    } catch (e) { out.mv75 = { error: e.message }; }
+    try {
+      out.queryStar = await qboRequest('/query', { query: `SELECT * FROM Customer WHERE Id = '${id}'` });
+    } catch (e) { out.queryStar = { error: e.message }; }
+    res.json(out);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
