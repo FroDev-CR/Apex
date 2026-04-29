@@ -11,11 +11,6 @@ function buildCollaboratorMap(collaborators) {
   return map;
 }
 
-const COLLAB_COLORS = [
-  '#f97316','#3b82f6','#10b981','#8b5cf6','#ef4444',
-  '#f59e0b','#06b6d4','#ec4899','#84cc16','#6366f1',
-];
-
 function matchCollaborator(raw = '', collabMap) {
   if (!raw) return null;
   const normalized = raw.toLowerCase().trim();
@@ -25,25 +20,7 @@ function matchCollaborator(raw = '', collabMap) {
   return null;
 }
 
-// Only called when Employee custom field is explicitly set — trusted person name
-async function matchOrCreateFromEmployee(employeeName = '', collabMap) {
-  if (!employeeName) return null;
-  const existing = matchCollaborator(employeeName, collabMap);
-  if (existing) return existing;
-
-  const name = employeeName.trim();
-  const color = COLLAB_COLORS[collabMap.size % COLLAB_COLORS.length];
-  const created = await Collaborator.findOneAndUpdate(
-    { name },
-    { $set: { isActive: true }, $setOnInsert: { name, color } },
-    { upsert: true, new: true, setDefaultsOnInsert: true }
-  );
-  collabMap.set(name.toLowerCase(), created._id);
-  console.log(`[qboSync] Auto-created collaborator: "${name}"`);
-  return created._id;
-}
-
-async function mapQBOInvoice(qbo, collabMap, customerNotesMap) {
+async function mapQBOInvoice(qbo, collabMap) {
   const lineItems = (qbo.Line || [])
     .filter(l => l.DetailType === 'SalesItemLineDetail')
     .map(l => ({
@@ -55,17 +32,12 @@ async function mapQBOInvoice(qbo, collabMap, customerNotesMap) {
       amount: l.Amount || 0
     }));
 
+  // Invoice.PrivateNote = "Memo on statement (hidden)" in QBO UI — primary collaborator source.
+  // Match-only against existing collaborators (no auto-create) since legacy memos still
+  // contain work names like "CITYWALK"/"flatwork" until Emily migrates them.
   const privateNote = qbo.PrivateNote || '';
   const customFields = qbo.CustomField || [];
-  // Customer.Notes (Internal customer notes in QBO UI) — primary source for collaborator
-  const customerNotes = customerNotesMap?.get(qbo.CustomerRef?.value) || '';
-  const employeeField = customerNotes
-    || customFields.find(f => f.Name?.toLowerCase().includes('employ'))?.StringValue?.trim()
-    || '';
-  const collaboratorRawText = employeeField || privateNote;
-  const collaboratorId = employeeField
-    ? await matchOrCreateFromEmployee(employeeField, collabMap)
-    : matchCollaborator(privateNote, collabMap);
+  const collaboratorId = matchCollaborator(privateNote, collabMap);
   const builderNumber = customFields.find(f => f.Name?.toLowerCase().includes('builder'))?.StringValue || '';
   const estado = customFields.find(f => f.Name?.toLowerCase() === 'estado')?.StringValue || '';
 
@@ -86,33 +58,14 @@ async function mapQBOInvoice(qbo, collabMap, customerNotesMap) {
     builderNumber,
     estado,
     privateNote,
-    collaboratorRaw: collaboratorRawText,
+    collaboratorRaw: privateNote,
     ...payFields,
     syncedAt: new Date()
   };
   // Only overwrite collaborator when we actually resolved one — never overwrite with null.
-  // This preserves manual assignments on invoices that have no Employee field in QBO.
+  // Preserves manual UI assignments on invoices whose PrivateNote doesn't match a known collab.
   if (collaboratorId !== null) base.collaborator = collaboratorId;
   return base;
-}
-
-async function buildCustomerNotesMap() {
-  const map = new Map();
-  let startPosition = 1;
-  const pageSize = 1000;
-  while (true) {
-    const data = await qboRequest('/query', {
-      query: `SELECT Id, Notes FROM Customer STARTPOSITION ${startPosition} MAXRESULTS ${pageSize}`
-    });
-    const customers = data.QueryResponse?.Customer || [];
-    for (const c of customers) {
-      if (c.Notes && c.Notes.trim()) map.set(c.Id, c.Notes.trim());
-    }
-    if (customers.length < pageSize) break;
-    startPosition += pageSize;
-  }
-  console.log(`[qboSync] Loaded ${map.size} customers with Notes`);
-  return map;
 }
 
 export async function syncQBOInvoices({ sinceDays } = {}) {
@@ -121,9 +74,6 @@ export async function syncQBOInvoices({ sinceDays } = {}) {
 
   const collaborators = await Collaborator.find({ isActive: true });
   const collabMap = buildCollaboratorMap(collaborators);
-  // Skip the all-customers Notes scan in fast mode — preserves existing collaborator
-  // assignment on already-synced invoices via the existing-record branch below.
-  const customerNotesMap = fast ? new Map() : await buildCustomerNotesMap();
 
   // Build TxnDate filter for fast sync
   let dateClause = '';
@@ -147,7 +97,7 @@ export async function syncQBOInvoices({ sinceDays } = {}) {
     if (invoices.length === 0) break;
 
     for (const qboInv of invoices) {
-      const mapped = await mapQBOInvoice(qboInv, collabMap, customerNotesMap);
+      const mapped = await mapQBOInvoice(qboInv, collabMap);
       const existing = await Invoice.findOne(
         { qboId: mapped.qboId },
         { manualQty: 1, manualPay: 1 }
