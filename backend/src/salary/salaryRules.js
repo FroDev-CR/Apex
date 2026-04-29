@@ -69,14 +69,24 @@ export function calculateCollaboratorPay(lineItems = []) {
 }
 
 /**
- * Get unique work type labels present in an invoice's line items
+ * Get unique work type labels present in an invoice's line items.
+ * Falls back to the raw productService (with the leading "EPO:" prefix stripped)
+ * for lines that don't match a known PAYABLE_KEYWORDS entry — so EPO and other
+ * manual-pay items still display a meaningful task name in the salary report.
  */
 export function getWorkTypes(lineItems = []) {
   const seen = new Set();
   const types = [];
   for (const li of lineItems) {
-    const t = getLineWorkType(li);
-    if (t && !seen.has(t.label)) { seen.add(t.label); types.push(t.label); }
+    const matched = getLineWorkType(li);
+    let label = matched?.label;
+    if (!label) {
+      const raw = (li.productService || li.description || '').trim();
+      if (!raw) continue;
+      if (NON_PAYABLE_KEYWORDS.some(k => raw.toUpperCase().includes(k))) continue;
+      label = raw.replace(/^EPO\s*[:\-]?\s*/i, '').trim() || raw;
+    }
+    if (!seen.has(label)) { seen.add(label); types.push(label); }
   }
   return types;
 }
