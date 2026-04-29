@@ -346,6 +346,21 @@ reportRoutes.get('/export', async (req, res) => {
   }
 });
 
+// ─── GET /api/reports/customer-debug/:id ──────────────────────────────────
+// Dump full Customer entity from QBO so we can identify which field matches
+// "Memo on statement (hidden)" in the QBO UI.
+reportRoutes.get('/customer-debug/:id', async (req, res) => {
+  try {
+    const { qboRequest } = await import('../config/qbo.js');
+    const data = await qboRequest('/query', {
+      query: `SELECT * FROM Customer WHERE Id = '${req.params.id}'`
+    });
+    res.json(data.QueryResponse?.Customer?.[0] || { error: 'not found' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── GET /api/reports/epos ────────────────────────────────────────────────
 // EPO invoices grouped by collaborator — editable SF for salary override
 // EPO is detected only when a line item's productService matches \bEPO\b
