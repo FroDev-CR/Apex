@@ -3,6 +3,25 @@ import { Invoice } from '../models/Invoice.js';
 import { Collaborator } from '../models/Collaborator.js';
 import { ManualEntry } from '../models/ManualEntry.js';
 import { calculatePeriodSalary, getWorkTypes } from '../salary/salaryRules.js';
+import { buildCollaboratorMap, matchCollaborator } from '../utils/collabMatch.js';
+
+// An invoice is "legitimately payable" — meaning it should appear in the salary
+// report and exports — only when it has an explicit manual override (Emily's
+// confirmed pay) OR its current PrivateNote actually matches the assigned
+// collaborator. This hides stale auto-assignments from the old Customer.Notes era.
+function hasManualOverride(inv) {
+  return (inv.manualPay !== null && inv.manualPay !== undefined)
+      || (inv.manualQty !== null && inv.manualQty !== undefined);
+}
+
+function isLegitimatelyPayable(inv, collabMap) {
+  if (hasManualOverride(inv)) return true;
+  if (!inv.collaborator) return false;
+  const matched = matchCollaborator(inv.privateNote || '', collabMap);
+  if (!matched) return false;
+  const assignedId = inv.collaborator._id?.toString?.() || String(inv.collaborator);
+  return String(matched) === assignedId;
+}
 
 export const reportRoutes = Router();
 
@@ -34,9 +53,16 @@ reportRoutes.get('/salary', async (req, res) => {
     };
     if (collaboratorId) invoiceFilter.collaborator = collaboratorId;
 
-    const invoices = await Invoice.find(invoiceFilter)
+    // Build collab map once for legitimacy check. Hides stale auto-assignments
+    // from the legacy Customer.Notes era — only shows invoices where memo still
+    // matches assigned collab, or where Emily set an explicit manual override.
+    const allCollabs = await Collaborator.find({}, { name: 1 });
+    const collabMap = buildCollaboratorMap(allCollabs);
+
+    const candidates = await Invoice.find(invoiceFilter)
       .populate('collaborator', 'name color email')
       .sort({ txnDate: -1 });
+    const invoices = candidates.filter(inv => isLegitimatelyPayable(inv, collabMap));
 
     // Manual entries (off-invoice payments)
     const manualFilter = { ...dateFilter(dateFrom, dateTo) };
@@ -287,12 +313,17 @@ reportRoutes.get('/export', async (req, res) => {
     });
 
     // ── Salarios por colaborador ──
+    // Same legitimacy rule as /salary: only invoices with manual override OR
+    // a current PrivateNote-to-collab match. Stale assignments hidden.
+    const allCollabs = await Collaborator.find({}, { name: 1 });
+    const collabMap = buildCollaboratorMap(allCollabs);
     const bySalary = new Map();
     for (const inv of invoices) {
       const hasOverride = (inv.manualPay !== null && inv.manualPay !== undefined)
                        || (inv.manualQty !== null && inv.manualQty !== undefined);
       const isAutoPayable = inv.hasMonoSlab && (inv.collaboratorPay || 0) > 1;
       if (!hasOverride && !isAutoPayable) continue;
+      if (!isLegitimatelyPayable(inv, collabMap)) continue;
       const key  = inv.collaborator?._id?.toString() || '__unassigned__';
       const name = inv.collaborator?.name || 'Sin asignar';
       if (!bySalary.has(key)) bySalary.set(key, { colaborador: name, m2: 0, total: 0, facturas: 0, breakdown: [] });

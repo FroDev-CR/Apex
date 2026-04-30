@@ -1,0 +1,452 @@
+\documentclass[11pt,a4paper]{article}
+
+% ─── Encoding & language ───────────────────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-tabla]{babel}
+\usepackage{lmodern}
+
+% ─── Page geometry ─────────────────────────────────────────────────────────
+\usepackage[a4paper,margin=2.3cm,headheight=15pt]{geometry}
+
+% ─── Colors ────────────────────────────────────────────────────────────────
+\usepackage{xcolor}
+\definecolor{apexorange}{HTML}{F97316}
+\definecolor{apexsteel}{HTML}{1F2937}
+\definecolor{apexgray}{HTML}{6B7280}
+\definecolor{apexlight}{HTML}{F3F4F6}
+\definecolor{apexgreen}{HTML}{10B981}
+\definecolor{apexred}{HTML}{EF4444}
+\definecolor{apexblue}{HTML}{3B82F6}
+\definecolor{apexamber}{HTML}{F59E0B}
+
+% ─── Typography ────────────────────────────────────────────────────────────
+\usepackage{titlesec}
+\titleformat{\section}
+  {\Large\bfseries\color{apexorange}}
+  {\thesection.}{0.6em}{}
+  [\vspace{-0.4em}\color{apexorange}\rule{\linewidth}{0.6pt}]
+\titleformat{\subsection}
+  {\large\bfseries\color{apexsteel}}
+  {\thesubsection}{0.5em}{}
+\titleformat{\subsubsection}
+  {\normalsize\bfseries\color{apexgray}}
+  {\thesubsubsection}{0.4em}{}
+
+\titlespacing*{\section}{0pt}{1.4em}{0.6em}
+\titlespacing*{\subsection}{0pt}{1em}{0.4em}
+
+% ─── Header / footer ───────────────────────────────────────────────────────
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\headrule}{\hbox to\headwidth{\color{apexorange}\leaders\hrule height \headrulewidth\hfill}}
+\fancyhead[L]{\textcolor{apexorange}{\textbf{APEX}} \textcolor{apexgray}{\small Manual de Uso}}
+\fancyhead[R]{\textcolor{apexgray}{\small\thepage}}
+
+% ─── Lists ─────────────────────────────────────────────────────────────────
+\usepackage{enumitem}
+\setlist[itemize]{leftmargin=1.3em,itemsep=0.2em,topsep=0.3em}
+\setlist[enumerate]{leftmargin=1.5em,itemsep=0.3em,topsep=0.4em}
+
+% ─── Tables ────────────────────────────────────────────────────────────────
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\renewcommand{\arraystretch}{1.25}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+
+% ─── Boxes (callouts) ──────────────────────────────────────────────────────
+\usepackage[most]{tcolorbox}
+
+\newtcolorbox{infobox}[1][]{
+  colback=apexblue!7,colframe=apexblue,
+  fonttitle=\bfseries,coltitle=white,
+  title={\textcolor{white}{Nota}},
+  arc=2pt,boxrule=0.6pt,left=8pt,right=8pt,top=6pt,bottom=6pt,
+  #1
+}
+\newtcolorbox{warnbox}[1][]{
+  colback=apexamber!10,colframe=apexamber,
+  fonttitle=\bfseries,coltitle=white,
+  title={\textcolor{white}{Importante}},
+  arc=2pt,boxrule=0.6pt,left=8pt,right=8pt,top=6pt,bottom=6pt,
+  #1
+}
+\newtcolorbox{dangerbox}[1][]{
+  colback=apexred!8,colframe=apexred,
+  fonttitle=\bfseries,coltitle=white,
+  title={\textcolor{white}{Cuidado}},
+  arc=2pt,boxrule=0.6pt,left=8pt,right=8pt,top=6pt,bottom=6pt,
+  #1
+}
+\newtcolorbox{tipbox}[1][]{
+  colback=apexgreen!8,colframe=apexgreen,
+  fonttitle=\bfseries,coltitle=white,
+  title={\textcolor{white}{Tip}},
+  arc=2pt,boxrule=0.6pt,left=8pt,right=8pt,top=6pt,bottom=6pt,
+  #1
+}
+
+% ─── Inline code ───────────────────────────────────────────────────────────
+\usepackage{xparse}
+\NewDocumentCommand{\code}{m}{\colorbox{apexlight}{\texttt{\small #1}}}
+\NewDocumentCommand{\btn}{m}{\textbf{\textcolor{apexorange}{[#1]}}}
+\NewDocumentCommand{\menu}{m}{\textbf{\textcolor{apexsteel}{#1}}}
+
+% ─── Hyperlinks ────────────────────────────────────────────────────────────
+\usepackage[colorlinks=true,linkcolor=apexorange,urlcolor=apexorange,citecolor=apexorange]{hyperref}
+
+% ─── Title metadata ────────────────────────────────────────────────────────
+\title{}
+\author{}
+\date{}
+
+% ═══════════════════════════════════════════════════════════════════════════
+\begin{document}
+
+% ─── Cover page ────────────────────────────────────────────────────────────
+\begin{titlepage}
+  \begin{center}
+    \vspace*{2cm}
+    {\Huge\bfseries\textcolor{apexorange}{APEX}}\\[0.3cm]
+    {\Large\bfseries\textcolor{apexsteel}{CONCRETE}}\\[2cm]
+
+    \rule{0.6\linewidth}{1pt}\\[0.5cm]
+    {\LARGE\bfseries Manual de Uso}\\[0.3cm]
+    {\large\textcolor{apexgray}{Sistema interno de facturas y planilla}}\\[0.3cm]
+    \rule{0.6\linewidth}{1pt}\\[3cm]
+
+    \begin{tabular}{rl}
+      \textcolor{apexgray}{\textbf{Versión:}}    & 1.0 \\
+      \textcolor{apexgray}{\textbf{Frontend:}}   & \url{https://apex-tau-ebon.vercel.app} \\
+      \textcolor{apexgray}{\textbf{Backend:}}    & \url{https://apex-w9h5.onrender.com} \\
+      \textcolor{apexgray}{\textbf{Actualizado:}}& Abril 2026 \\
+    \end{tabular}
+
+    \vfill
+    \textcolor{apexgray}{\small Documento interno --- Apex Concrete Inc.}
+  \end{center}
+\end{titlepage}
+
+% ─── Table of contents ─────────────────────────────────────────────────────
+\renewcommand*\contentsname{\textcolor{apexorange}{Contenido}}
+\tableofcontents
+\thispagestyle{fancy}
+\newpage
+
+% ═══════════════════════════════════════════════════════════════════════════
+\section{Introducción}
+
+Apex es la aplicación interna que reemplaza el flujo manual de QuickBooks Online (QBO) y el cálculo de planilla en hojas de cálculo. Sincroniza facturas desde QBO, calcula automáticamente el pago al colaborador según el tipo de trabajo, y genera reportes exportables a Excel y PDF.
+
+\subsection{Componentes principales}
+
+\begin{itemize}
+  \item \menu{Facturas}: lista y detalle de cada factura sincronizada de QBO.
+  \item \menu{Reportes $\rightarrow$ Salarios}: planilla por colaborador y rango de fechas.
+  \item \menu{Reportes $\rightarrow$ EPOs}: facturas de tipo EPO que requieren ajuste manual.
+  \item \menu{Configuración $\rightarrow$ Colaboradores}: registro maestro de quien recibe pagos.
+  \item \menu{Configuración $\rightarrow$ Conexiones}: vinculación con QBO y sincronización.
+\end{itemize}
+
+\begin{infobox}
+La aplicación corre en infraestructura gratuita (Render). El backend puede tardar hasta 15 segundos en responder si llevaba inactivo varias horas. Es normal --- el primer request lo despierta.
+\end{infobox}
+
+% ═══════════════════════════════════════════════════════════════════════════
+\section{Setup inicial (una sola vez)}
+
+\subsection{Registrar colaboradores}
+
+Antes de cualquier sincronización, hay que registrar a cada colaborador en la app. Los nombres aquí son la única referencia que tiene Apex para asignar pagos.
+
+\begin{enumerate}
+  \item Ir a \menu{Configuración $\rightarrow$ Colaboradores}.
+  \item Click en \btn{+ Agregar}.
+  \item Llenar:
+    \begin{itemize}
+      \item \textbf{Nombre:} debe coincidir EXACTAMENTE con lo que Emily escribirá en QBO.
+      \item \textbf{Email:} opcional, usado para envío de recibos.
+      \item \textbf{Color:} para identificación visual.
+    \end{itemize}
+  \item Guardar.
+\end{enumerate}
+
+\begin{tipbox}
+Usar nombres únicos y sin ambigüedad. Por ejemplo, en lugar de \code{ED} (que podría confundirse con \textit{REPLACED}), usar \code{Eduardo}. Nombres de dos palabras (\code{Juan Perez}) son más seguros que solo \code{Juan}.
+\end{tipbox}
+
+\subsection{Conectar QuickBooks}
+
+\begin{enumerate}
+  \item \menu{Configuración $\rightarrow$ Conexiones}.
+  \item Click en \btn{Conectar con QuickBooks}.
+  \item Iniciar sesión con la cuenta de QBO de Apex.
+  \item Autorizar acceso.
+\end{enumerate}
+
+La conexión se mantiene activa. Solo hay que reconectar si QBO la revoca o si vence el token (raro).
+
+% ═══════════════════════════════════════════════════════════════════════════
+\section{Cómo se calculan los pagos}
+
+\subsection{Tabla de tarifas automáticas}
+
+Apex lee los \textit{line items} de cada factura. El producto/servicio determina si se paga y cuánto:
+
+\begin{center}
+\begin{tabularx}{\linewidth}{L{4.5cm} X r}
+\toprule
+\textbf{Tipo de trabajo (en QBO)} & \textbf{Cómo se paga} & \textbf{Tarifa} \\
+\midrule
+Pour Mono Slab / Mono Slab & Automático & \$1.00 / SF \\
+Sidewalk                   & Automático & \$0.75 / SF \\
+City Sidewalk              & Automático & \$0.75 / SF \\
+Extra Sidewalk             & Automático & \$0.75 / SF \\
+Drives \& Walks            & Automático & \$0.75 / SF \\
+Driveways                  & Automático & \$0.75 / SF \\
+\midrule
+MATERIAL                   & Nunca se paga (solo se muestra) & \$0 \\
+EPO: \textit{<trabajo>}    & Manual, vía pestaña EPOs & \$0 auto \\
+Turn Down, Undercut, Muck Out, Replacement, Patch, otros & Manual, en modal de factura & \$0 auto \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{Asignación del colaborador}
+
+Apex lee el campo \textbf{``Memo on statement (hidden)''} de cada factura en QBO. Busca dentro de ese texto el nombre de un colaborador registrado.
+
+\begin{center}
+\begin{tabularx}{\linewidth}{L{4cm} L{4cm} X}
+\toprule
+\textbf{Memo en QBO} & \textbf{Colaborador en app} & \textbf{Resultado} \\
+\midrule
+\code{Juan Perez}    & \code{Juan}          & Asigna a Juan \\
+\code{JUAN, MATERIAL}& \code{Juan}          & Asigna a Juan \\
+\code{REPLACED}      & \code{Ed}            & \textbf{NO asigna} (palabra parcial) \\
+\code{JUANITO}       & \code{Juan}          & \textbf{NO asigna} (no es palabra completa) \\
+\code{CITYWALK}      & cualquiera           & \textbf{NO asigna} (sin coincidencia) \\
+\code{Juan Perez}    & \code{Juan} y \code{Juan Perez} ambos existen & Asigna al más específico (\code{Juan Perez}) \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\begin{warnbox}
+Si el memo no contiene el nombre de un colaborador registrado, la factura queda en estado \textbf{``Sin asignar''}. Esto es comportamiento intencional: prefiere quedar sin asignar que asignar al colaborador equivocado.
+\end{warnbox}
+
+% ═══════════════════════════════════════════════════════════════════════════
+\section{Flujo de Emily en QBO}
+
+Para que la app funcione bien, Emily debe seguir estas reglas al crear o editar facturas en QuickBooks:
+
+\subsection{Memo on statement (hidden)}
+
+Escribir el nombre del colaborador exactamente como está registrado en Apex. Puede ir solo o acompañado de otra info, separado por espacio o coma.
+
+\begin{itemize}
+  \item Correcto: \code{Juan Perez}
+  \item Correcto: \code{Juan Perez, EXTRA}
+  \item Incorrecto: \code{Juanito} (no matchea con \code{Juan})
+  \item Incorrecto: dejar vacío --- la factura quedará sin asignar
+\end{itemize}
+
+\subsection{Line items (Product/Service)}
+
+Cada línea de la factura debe usar uno de los \textit{products} estándar listados en la tabla de tarifas. La cantidad (Qty) en pies cuadrados.
+
+\begin{itemize}
+  \item Si es un \textbf{EPO}, el formato debe ser \code{EPO: <nombre del trabajo>}.
+  \item Si es un trabajo no estándar (Replacement, Patch, etc.), Apex lo dejará en \$0 y Emily debe ingresar el pago manualmente desde el modal de la factura en la app.
+\end{itemize}
+
+% ═══════════════════════════════════════════════════════════════════════════
+\section{Sincronización}
+
+Apex no se conecta a QBO en tiempo real. Hay que sincronizar manualmente o automáticamente.
+
+\subsection{Tipos de sync}
+
+\begin{center}
+\begin{tabularx}{\linewidth}{L{3.5cm} X L{2.5cm}}
+\toprule
+\textbf{Tipo} & \textbf{Para qué sirve} & \textbf{Velocidad} \\
+\midrule
+\btn{Sync rápido (1 sem)} & Día a día. Trae solo los últimos 7 días. & $\sim$10 segundos \\
+\btn{Sync completo}       & Cuando se agrega un colaborador nuevo, se cambia una regla, o se sospecha de datos viejos incorrectos. Trae todas las facturas. & 1--3 minutos \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{Cuándo correr cada uno}
+
+\begin{itemize}
+  \item \textbf{Diariamente o antes de revisar:} Sync rápido.
+  \item \textbf{Después de crear un colaborador nuevo:} Sync completo (para que reasigne facturas viejas que ahora matchean).
+  \item \textbf{Después de cambiar tarifas:} Sync completo (recalcula pagos).
+  \item \textbf{Antes de exportar planilla:} Sync rápido para asegurar datos al día.
+\end{itemize}
+
+\begin{infobox}
+La sincronización \textbf{nunca} pisa los pagos manuales. Si Emily editó el pago de una factura desde la app, ese valor sobrevive cualquier sync futuro.
+\end{infobox}
+
+% ═══════════════════════════════════════════════════════════════════════════
+\section{Revisión semanal recomendada}
+
+Cada lunes (o antes de cerrar la semana de pago):
+
+\subsection{Paso 1: Sincronizar}
+Click en \btn{Sync rápido (1 sem)} desde \menu{Configuración}.
+
+\subsection{Paso 2: Facturas sin asignar}
+\begin{enumerate}
+  \item Ir a \menu{Facturas}.
+  \item Filtrar por colaborador = \textit{Sin asignar}.
+  \item Para cada una, abrir el modal y asignar manualmente al colaborador correcto.
+\end{enumerate}
+
+\subsection{Paso 3: Revisar pagos automáticos}
+\begin{enumerate}
+  \item En \menu{Facturas}, revisar facturas recientes.
+  \item Si el pago calculado no coincide con lo acordado (ej. Emily pactó tarifa especial), abrir modal y editar el campo \textbf{``Pago colaborador''}.
+  \item Aparecerá badge \btn{MANUAL} indicando que es override y no se recalculará.
+\end{enumerate}
+
+\subsection{Paso 4: EPOs}
+\begin{enumerate}
+  \item \menu{Reportes $\rightarrow$ EPOs}.
+  \item Cada EPO requiere SF (cantidad) o pago manual ingresado por Emily.
+  \item Una vez ingresado, se cuenta automáticamente en la planilla del colaborador.
+\end{enumerate}
+
+\subsection{Paso 5: Pagos off-invoice}
+\begin{enumerate}
+  \item \menu{Reportes $\rightarrow$ Salarios $\rightarrow$ Agregar pago manual}.
+  \item Usar para bonus, adelantos, ajustes que no están ligados a una factura.
+\end{enumerate}
+
+% ═══════════════════════════════════════════════════════════════════════════
+\section{Pago de planilla}
+
+\subsection{Generar reporte}
+
+\begin{enumerate}
+  \item \menu{Reportes $\rightarrow$ Salarios}.
+  \item Seleccionar rango de fechas (típicamente lunes a domingo de la semana cerrada).
+  \item Opcional: filtrar por colaborador específico.
+  \item Revisar tabla en pantalla --- muestra cada factura, EPO modificado, y pago manual contribuyendo al total.
+\end{enumerate}
+
+\subsection{Exportar}
+
+\begin{itemize}
+  \item \btn{Exportar Excel}: detalle por colaborador, una hoja por persona.
+  \item \btn{Exportar PDF}: resumen visual para enviar por email o imprimir.
+  \item \btn{Enviar email}: si el colaborador tiene email registrado, manda PDF directo.
+\end{itemize}
+
+% ═══════════════════════════════════════════════════════════════════════════
+\section{Mantenimiento de colaboradores}
+
+\subsection{Limpiar basura}
+
+Si por algún motivo se acumularon registros de colaboradores que no deberían existir:
+
+\begin{enumerate}
+  \item \menu{Configuración $\rightarrow$ Colaboradores}.
+  \item Click en \btn{Limpiar sin facturas}: borra automáticamente todos los que no tienen ninguna factura ni pago manual asignado.
+\end{enumerate}
+
+\subsection{Eliminar colaboradores con facturas}
+
+Si un colaborador tiene facturas pero igual hay que removerlo (ej. duplicado, error de nombre):
+
+\begin{enumerate}
+  \item Marcar el checkbox del colaborador.
+  \item Click en \btn{Eliminar permanentemente}.
+  \item Confirmar el aviso. Si tiene facturas, confirmar el segundo aviso de \textit{forzar}.
+  \item Las facturas quedan en estado ``Sin asignar''. Reasignar manualmente desde el modal de cada factura.
+\end{enumerate}
+
+\begin{dangerbox}
+La eliminación permanente NO se puede deshacer. Si solo querés desactivarlo (que no aparezca en listas pero conserve sus pagos históricos), usar \btn{Desactivar} en su lugar.
+\end{dangerbox}
+
+% ═══════════════════════════════════════════════════════════════════════════
+\section{Reglas de oro}
+
+\begin{itemize}
+  \item El \textbf{pago manual siempre gana} sobre el cálculo automático. Sync nunca lo pisa.
+  \item Si el memo en QBO no matchea ningún colaborador, la factura queda \textbf{Sin asignar} (no se asigna mal por error).
+  \item EPOs y trabajos no estándar (Replacement, Patch, Turn Down, etc.) \textbf{nunca pagan automáticamente}; siempre requieren override manual.
+  \item Cambios en tarifas o tipos de trabajo solo aplican después de un sync completo.
+  \item \textbf{No} eliminar colaboradores recién creados sin antes correr sync completo: la asignación de facturas viejas necesita el sync para detectarlos.
+\end{itemize}
+
+% ═══════════════════════════════════════════════════════════════════════════
+\section{Solución de problemas}
+
+\subsection{Una factura quedó ``Sin asignar''}
+
+\textbf{Causa:} El memo en QBO no contiene el nombre del colaborador como palabra completa, o el colaborador no está registrado en la app.
+
+\textbf{Solución:}
+\begin{enumerate}
+  \item Verificar que el colaborador esté en \menu{Configuración $\rightarrow$ Colaboradores}.
+  \item Abrir la factura en \menu{Facturas} y asignar manualmente.
+  \item Para evitarlo en futuras facturas, corregir el memo en QBO.
+\end{enumerate}
+
+\subsection{El pago calculado no es correcto}
+
+\textbf{Causa:} El \textit{product/service} en QBO no matchea ninguno de los tipos auto-pagables, o la cantidad (Qty) está mal.
+
+\textbf{Solución:}
+\begin{enumerate}
+  \item Verificar el line item en QBO.
+  \item Si el tipo no es auto-pagable (ej. \textit{Replacement}), abrir modal de la factura en la app y editar el pago manualmente.
+\end{enumerate}
+
+\subsection{No aparece una factura recién creada en QBO}
+
+\textbf{Causa:} Aún no se sincronizó.
+
+\textbf{Solución:} Correr \btn{Sync rápido (1 sem)} desde \menu{Configuración}.
+
+\subsection{El backend tarda mucho en responder}
+
+\textbf{Causa:} Render free tier suspende el servicio tras 15 minutos sin uso. El primer request lo despierta.
+
+\textbf{Solución:} Esperar hasta 15 segundos en el primer click. Los siguientes serán inmediatos.
+
+\subsection{EPOs no aparecen en la pestaña EPOs}
+
+\textbf{Causa:} El \textit{product/service} en QBO no empieza con \code{EPO:}.
+
+\textbf{Solución:} Verificar formato en QBO. Debe ser exactamente \code{EPO: <nombre del trabajo>}.
+
+% ═══════════════════════════════════════════════════════════════════════════
+\section{Resumen visual del flujo}
+
+\begin{center}
+\begin{tcolorbox}[colback=apexlight,colframe=apexorange,boxrule=1pt,arc=4pt]
+\textbf{1.} Emily crea factura en QBO con memo = nombre colab + line items correctos. \\[0.4em]
+\textbf{2.} Apex sincroniza (rápido o completo). \\[0.4em]
+\textbf{3.} App calcula pago según tipo de trabajo y asigna colaborador. \\[0.4em]
+\textbf{4.} Emily revisa en app: ajusta sin asignar, EPOs, pagos manuales. \\[0.4em]
+\textbf{5.} Generar reporte de planilla por rango de fechas. \\[0.4em]
+\textbf{6.} Exportar a Excel o PDF y enviar al colaborador.
+\end{tcolorbox}
+\end{center}
+
+\vfill
+
+\begin{center}
+\textcolor{apexgray}{\small \textit{Documento interno de Apex Concrete --- Para soporte técnico contactar al desarrollador.}}
+\end{center}
+
+\end{document}

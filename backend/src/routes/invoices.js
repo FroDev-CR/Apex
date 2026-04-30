@@ -72,13 +72,9 @@ invoiceRoutes.post('/import', async (req, res) => {
     const { Collaborator } = await import('../models/Collaborator.js');
     const { computeInvoicePayFields, computePayFieldsFromNote } = await import('../salary/salaryRules.js');
 
+    const { buildCollaboratorMap, matchCollaborator } = await import('../utils/collabMatch.js');
     const collaborators = await Collaborator.find({ isActive: true });
-    // Sort by name length desc so "Juan Perez" matches before "Juan"
-    const collabMap = new Map(
-      [...collaborators]
-        .sort((a, b) => b.name.length - a.name.length)
-        .map(c => [c.name.toLowerCase().trim(), c._id])
-    );
+    const collabMap = buildCollaboratorMap(collaborators);
 
     let inserted = 0, updated = 0;
 
@@ -98,15 +94,7 @@ invoiceRoutes.post('/import', async (req, res) => {
         }));
 
       const privateNote = qbo.PrivateNote || '';
-      let collaboratorId = null;
-      if (privateNote.trim()) {
-        for (const [name, id] of collabMap.entries()) {
-          if (!name) continue;
-          const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          const re = new RegExp(`(^|[^\\p{L}])${escaped}($|[^\\p{L}])`, 'iu');
-          if (re.test(privateNote)) { collaboratorId = id; break; }
-        }
-      }
+      const collaboratorId = matchCollaborator(privateNote, collabMap);
 
       const customFields = qbo.CustomField || [];
       const builderNumber = customFields.find(f =>
