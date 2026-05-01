@@ -575,7 +575,12 @@ function SalaryTab({ params }) {
                         const hasOverride = b.manualPay !== null && b.manualPay !== undefined;
                         return (
                         <tr key={j} className="hover:bg-concrete-50 dark:hover:bg-steel-700">
-                          <td className="px-4 py-2 font-mono text-steel-700 dark:text-steel-300">#{b.docNumber}</td>
+                          <td className="px-4 py-2 font-mono text-steel-700 dark:text-steel-300 whitespace-nowrap">
+                            #{b.docNumber}
+                            {b.isEpo && (
+                              <span className="ml-1.5 inline-block bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider align-middle">EPO</span>
+                            )}
+                          </td>
                           <td className="px-4 py-2 text-steel-600 dark:text-steel-300 truncate max-w-[160px] hidden sm:table-cell">{b.customerName}</td>
                           <td className="px-4 py-2 text-steel-500 dark:text-steel-400 hidden md:table-cell">
                             <span className="inline-block bg-concrete-100 dark:bg-steel-700 text-steel-600 dark:text-steel-300 text-xs font-medium px-2 py-0.5 rounded-full truncate max-w-[140px]">

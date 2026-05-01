@@ -45,13 +45,15 @@ reportRoutes.get('/salary', async (req, res) => {
   try {
     const { dateFrom, dateTo, collaboratorId } = req.query;
 
-    // Include: auto-paid mono slab/sidewalk/driveway invoices, OR any invoice with a
-    // manual override (EPO, Replacement, Patch, Turn Down, …) that Emily confirmed.
+    // Include: auto-paid mono slab/sidewalk/driveway invoices, EPOs (always
+    // shown so Emily can review even before manual override), OR any invoice
+    // with a manual override (Replacement, Patch, Turn Down, …) confirmed.
     const invoiceFilter = {
       $or: [
         { manualPay: { $ne: null } },
         { manualQty: { $ne: null } },
         { hasMonoSlab: true, collaboratorPay: { $gt: 1 } },
+        { 'lineItems.productService': { $regex: '\\bEPO\\b', $options: 'i' } },
       ],
       ...dateFilter(dateFrom, dateTo)
     };

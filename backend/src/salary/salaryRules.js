@@ -146,6 +146,7 @@ export function calculatePeriodSalary(invoices = []) {
       : (inv.monoSlabQty || 0);
     const pay = inv.collaboratorPay || 0;
     const workTypes = getWorkTypes(inv.lineItems || []);
+    const isEpo = (inv.lineItems || []).some(l => /\bEPO\b/i.test(l.productService || ''));
     total += pay;
     totalQty += qty;
     breakdown.push({
@@ -158,6 +159,7 @@ export function calculatePeriodSalary(invoices = []) {
       manualQty: inv.manualQty ?? null,
       manualPay: inv.manualPay ?? null,
       pay,
+      isEpo,
       workTypes: workTypes.length ? workTypes.join(', ') : '—',
       formula: getPayFormula(inv.lineItems)
     });
