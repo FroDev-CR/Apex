@@ -18,7 +18,11 @@ function isLegitimatelyPayable(inv, collabMap) {
   if (hasManualOverride(inv)) return true;
   if (!inv.collaborator) return false;
   const matched = matchCollaborator(inv.privateNote || '', collabMap);
-  if (!matched) return false;
+  // Memo doesn't name any registered collab → trust the existing assignment.
+  // Most invoice memos contain work descriptions ("Pour Mono Slab", "CITYWALK")
+  // instead of collab names. Only hide as stale when memo explicitly names a
+  // DIFFERENT registered collab than the one assigned.
+  if (!matched) return true;
   const assignedId = inv.collaborator._id?.toString?.() || String(inv.collaborator);
   return String(matched) === assignedId;
 }
