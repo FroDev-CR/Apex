@@ -328,7 +328,8 @@ reportRoutes.get('/export', async (req, res) => {
       const hasOverride = (inv.manualPay !== null && inv.manualPay !== undefined)
                        || (inv.manualQty !== null && inv.manualQty !== undefined);
       const isAutoPayable = inv.hasMonoSlab && (inv.collaboratorPay || 0) > 1;
-      if (!hasOverride && !isAutoPayable) continue;
+      const isEpo = (inv.lineItems || []).some(l => /\bEPO\b/i.test(l.productService || ''));
+      if (!hasOverride && !isAutoPayable && !isEpo) continue;
       if (!isLegitimatelyPayable(inv, collabMap)) continue;
       const key  = inv.collaborator?._id?.toString() || '__unassigned__';
       const name = inv.collaborator?.name || 'Sin asignar';
@@ -348,6 +349,9 @@ reportRoutes.get('/export', async (req, res) => {
         m2:           effectiveSF,
         pay:          inv.collaboratorPay || 0,
         tarea:        workTypes.join(', ') || '—',
+        isEpo,
+        manualQty:    inv.manualQty ?? null,
+        manualPay:    inv.manualPay ?? null,
       });
     }
     // Merge manual entries into per-collaborator salary rows
