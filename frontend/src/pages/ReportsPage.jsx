@@ -1518,7 +1518,7 @@ function ReportsPage() {
       </div>
 
       {/* ── Tab content ── */}
-      <div>
+      <div className="pb-28">
         {activeTab === 'overview'    && <OverviewTab    params={params} />}
         {activeTab === 'salary'      && <SalaryTab      params={params} />}
         {activeTab === 'epos'        && <EPOsTab        params={params} />}
