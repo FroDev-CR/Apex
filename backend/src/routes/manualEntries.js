@@ -47,6 +47,29 @@ manualEntryRoutes.post('/', async (req, res) => {
   }
 });
 
+// PATCH /api/manual-entries/:id
+manualEntryRoutes.patch('/:id', async (req, res) => {
+  try {
+    const { amount, reason, txnDate, collaborator } = req.body;
+    const update = {};
+    if (amount !== undefined) {
+      const numAmount = Number(amount);
+      if (isNaN(numAmount)) return res.status(400).json({ error: 'amount must be a number' });
+      update.amount = numAmount;
+    }
+    if (reason !== undefined) update.reason = reason;
+    if (txnDate !== undefined) update.txnDate = txnDate ? new Date(txnDate) : new Date();
+    if (collaborator !== undefined) update.collaborator = collaborator;
+
+    const entry = await ManualEntry.findByIdAndUpdate(req.params.id, { $set: update }, { new: true })
+      .populate('collaborator', 'name color');
+    if (!entry) return res.status(404).json({ error: 'Not found' });
+    res.json(entry);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // DELETE /api/manual-entries/:id
 manualEntryRoutes.delete('/:id', async (req, res) => {
   try {

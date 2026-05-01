@@ -131,6 +131,7 @@ export const manualEntriesApi = {
     return fetchApi(`/api/manual-entries${query ? `?${query}` : ''}`);
   },
   create: (data) => fetchApi('/api/manual-entries', { method: 'POST', body: JSON.stringify(data) }),
+  update: (id, data) => fetchApi(`/api/manual-entries/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   delete: (id)   => fetchApi(`/api/manual-entries/${id}`, { method: 'DELETE' }),
 };
 

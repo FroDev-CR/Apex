@@ -272,14 +272,17 @@ function ExternalPaymentModal({ onClose, onSaved }) {
 }
 
 // ─── Manual Salary Entry Modal ────────────────────────────────────────────
-function ManualEntryModal({ onClose, onSaved, defaultCollaboratorId = '' }) {
+function ManualEntryModal({ onClose, onSaved, defaultCollaboratorId = '', entry = null }) {
+  const isEdit = !!entry;
   const [collaborators, setCollaborators] = useState([]);
-  const [collabId, setCollabId]   = useState(defaultCollaboratorId);
+  const [collabId, setCollabId]   = useState(entry?.collaborator?._id || entry?.collaborator || defaultCollaboratorId);
   const [newCollabName, setNewCollabName] = useState('');
   const [creatingNew, setCreatingNew] = useState(false);
-  const [amount, setAmount]       = useState('');
-  const [reason, setReason]       = useState('');
-  const [txnDate, setTxnDate]     = useState(() => new Date().toISOString().slice(0,10));
+  const [amount, setAmount]       = useState(entry ? String(entry.amount ?? '') : '');
+  const [reason, setReason]       = useState(entry?.reason || '');
+  const [txnDate, setTxnDate]     = useState(() => entry?.txnDate
+    ? new Date(entry.txnDate).toISOString().slice(0,10)
+    : new Date().toISOString().slice(0,10));
   const [saving, setSaving]       = useState(false);
 
   useEffect(() => {
@@ -297,13 +300,23 @@ function ManualEntryModal({ onClose, onSaved, defaultCollaboratorId = '' }) {
         const created = await collaboratorsApi.create({ name: newCollabName.trim() });
         finalCollabId = created._id;
       }
-      await manualEntriesApi.create({
-        collaborator: finalCollabId,
-        amount: Number(amount),
-        reason: reason.trim(),
-        txnDate
-      });
-      toast.success('Pago manual guardado');
+      if (isEdit) {
+        await manualEntriesApi.update(entry._id, {
+          collaborator: finalCollabId,
+          amount: Number(amount),
+          reason: reason.trim(),
+          txnDate
+        });
+        toast.success('Pago manual actualizado');
+      } else {
+        await manualEntriesApi.create({
+          collaborator: finalCollabId,
+          amount: Number(amount),
+          reason: reason.trim(),
+          txnDate
+        });
+        toast.success('Pago manual guardado');
+      }
       onSaved();
       onClose();
     } catch (err) {
@@ -320,7 +333,7 @@ function ManualEntryModal({ onClose, onSaved, defaultCollaboratorId = '' }) {
     <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={onClose}>
       <div className="bg-white dark:bg-steel-800 rounded-t-2xl sm:rounded-2xl shadow-steel-lg w-full sm:max-w-md" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-concrete-100 dark:border-steel-700">
-          <h3 className="font-bold text-steel-900 dark:text-white">Pago manual a colaborador</h3>
+          <h3 className="font-bold text-steel-900 dark:text-white">{isEdit ? 'Editar pago manual' : 'Pago manual a colaborador'}</h3>
           <button onClick={onClose} className="text-steel-400 hover:text-steel-700 dark:hover:text-white transition-colors">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -404,6 +417,7 @@ function SalaryTab({ params }) {
   const [showModal, setShowModal] = useState(false);
   const [showManualModal, setShowManualModal] = useState(false);
   const [manualModalDefault, setManualModalDefault] = useState('');
+  const [editingEntry, setEditingEntry] = useState(null);
   const [editingPay, setEditingPay] = useState({}); // { [invoiceId]: draft$ }
   const [savingPay, setSavingPay] = useState({});
 
@@ -424,7 +438,12 @@ function SalaryTab({ params }) {
     } catch (err) { toast.error(err.message); }
   };
   const openManualModal = (collabId = '') => {
+    setEditingEntry(null);
     setManualModalDefault(collabId);
+    setShowManualModal(true);
+  };
+  const openEditManualModal = (entry, collabFromGroup) => {
+    setEditingEntry({ ...entry, collaborator: entry.collaborator || collabFromGroup });
     setShowManualModal(true);
   };
 
@@ -473,9 +492,10 @@ function SalaryTab({ params }) {
       )}
       {showManualModal && (
         <ManualEntryModal
-          onClose={() => setShowManualModal(false)}
+          onClose={() => { setShowManualModal(false); setEditingEntry(null); }}
           onSaved={fetchSalary}
           defaultCollaboratorId={manualModalDefault}
+          entry={editingEntry}
         />
       )}
       <div className="flex items-center justify-between flex-wrap gap-2">
@@ -629,7 +649,15 @@ function SalaryTab({ params }) {
                           <div className="text-xs text-steel-400 whitespace-nowrap">{fmtDate(m.txnDate)}</div>
                           <div className="flex-1 min-w-0 text-steel-700 dark:text-steel-300 truncate">{m.reason || <span className="italic text-steel-400">Sin razón</span>}</div>
                           <div className="font-bold text-emerald-700 dark:text-emerald-400 whitespace-nowrap">{fmt(m.amount)}</div>
+                          <button onClick={() => openEditManualModal(m, r.collaborator?._id)}
+                            title="Editar"
+                            className="p-1 text-steel-300 hover:text-primary-500 transition-colors">
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
                           <button onClick={() => deleteManualEntry(m._id)}
+                            title="Eliminar"
                             className="p-1 text-steel-300 hover:text-red-500 transition-colors">
                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
